@@ -1,9 +1,9 @@
 const template = document.createElement('template')
-template.innerHTML = `
+template.innerHTML = /* html */`
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
 <div id="quiz-card">
 <h3 id="question"></h3>
-<label for "answer">Your answer:</label>
+<label for="answer">Your answer:</label>
 <input type="number" id="input-number" name ="answer">
 <button id="button">Send Answer</button>
 <h3 id="answer"></h3>
@@ -17,15 +17,16 @@ template.innerHTML = `
  * @extends {window.HTMLElement}
  */
 
-export class QuizGame extends window.HTMLElement {
+class QuizGame extends window.HTMLElement {
   constructor () {
     super()
 
     this.attachShadow({ mode: 'open' })
     this.shadowRoot.appendChild(template.content.cloneNode(true))
-    this._apiURL = 'http://vhost3.lnu.se:20080/'
+    this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
     this._quizCard = this.shadowRoot.querySelector('#quiz-card')
     this.question = null
+    this.questionID = 1
   }
   connectedCallback () {
     this.getQuestion()
@@ -34,8 +35,9 @@ export class QuizGame extends window.HTMLElement {
   getAnswer () {
     this._quizCard.querySelector('#button').addEventListener('click', async event => {
       let input = this._quizCard.querySelector('#input-number')
-      let response = await this.postData(`${this._apiURL}answer/1`, { answer: input.value }) // GLÖM EJ ändra till question number
+      let response = await this.postData(this.apiURL, { answer: input.value })
       console.log(response)
+      this.apiURL = response.nextURL
       this._updateRendering(response)
     })
   }
@@ -55,20 +57,26 @@ export class QuizGame extends window.HTMLElement {
   }
 
   async getQuestion () {
-    let response = await window.fetch(`http://vhost3.lnu.se:20080/question/1`)
+    let response = await window.fetch(this.apiURL)
     response = await response.json()
+    console.log(response)
     this.question = response.question
+    this.apiURL = response.nextURL
     this._updateRendering()
     this.getAnswer()
   }
 
   _updateRendering (response) {
-    this._quizCard.querySelector('#question').textContent = this.question
+    let question = this._quizCard.querySelector('#question')
+    let answer = this._quizCard.querySelector('#answer')
+    question.textContent = this.question
+    answer.textContent = ''
     if (response) {
-      this._quizCard.querySelector('#answer').textContent = response.message
+      answer.textContent = response.message
+      setTimeout(() => { this.getQuestion() }, 1000)
     }
   }
 }
 
 // Registers the custom event
-window.customElements.define('quiz-game', QuizGame)
+window.customElements.define('jims-quiz-game', QuizGame)
