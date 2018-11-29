@@ -1,6 +1,12 @@
 const template = document.createElement('template')
 template.innerHTML = /* html */`
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
+<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
+-->
+<style>
+  div .input {
+    display: block;
+  }
+</style>
 <div id="quiz-card">
 <h3 id="question"></h3>
 <label for="answer">Your answer:</label>
@@ -9,7 +15,6 @@ template.innerHTML = /* html */`
 <h3 id="answer"></h3>
 </div>
 `
-
 /**
  * A Quiz game component
  *
@@ -62,16 +67,33 @@ class QuizGame extends window.HTMLElement {
     console.log(response)
     this.question = response.question
     this.apiURL = response.nextURL
-    this._updateRendering()
+    this._updateRendering(response)
     this.getAnswer()
   }
 
   _updateRendering (response) {
     let question = this._quizCard.querySelector('#question')
     let answer = this._quizCard.querySelector('#answer')
+    if (response.alternatives) {
+      Object.keys(response.alternatives).forEach((key) => { // GÅR NEDAN ATT GÖRA ENKLARE MED EN TEMPLATE?
+        let div = document.createElement('div')
+        div.setAttribute('class', 'input')
+        let radioButton = document.createElement('input')
+        radioButton.setAttribute('type', 'radio')
+        radioButton.setAttribute('id', key)
+        radioButton.setAttribute('value', response.alternatives[key])
+        div.appendChild(radioButton)
+        let label = document.createElement('label')
+        label.setAttribute('for', key)
+        label.textContent = response.alternatives[key]
+        div.appendChild(label)
+        this._quizCard.insertBefore(div, this._quizCard.querySelector('#button'))
+        console.log('Key: ' + key + 'Value: ' + response.alternatives[key])
+      })
+    }
     question.textContent = this.question
     answer.textContent = ''
-    if (response) {
+    if (!response.question) {
       answer.textContent = response.message
       setTimeout(() => { this.getQuestion() }, 1000)
     }
