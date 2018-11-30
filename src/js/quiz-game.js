@@ -37,18 +37,48 @@ class QuizGame extends window.HTMLElement {
     this.getQuestion()
   }
 
-  getAnswer () {
-    this._quizCard.querySelector('#button').addEventListener('click', async event => {
+  async getQuestion () {
+    let response = await window.fetch(this.apiURL)
+    response = await response.json()
+    console.log(response)
+    this.question = response.question
+    this.apiURL = response.nextURL
+    this._updateRendering(response)
+    this.getAnswer(response)
+  }
+
+  searchAnswer (response) {
+    let answer = 'ANSWER NOT CHANGED!'
+    if (response.question && !response.alternatives) {
+      console.log('FIRST IF ACTIVE!')
       let input = this._quizCard.querySelector('#input-number')
-      let response = await this.postData(this.apiURL, { answer: input.value })
-      console.log(response)
-      this.apiURL = response.nextURL
-      this._updateRendering(response)
+      answer = input.value
+      console.log('Answer changed in first if to: ' + answer)
+    }
+    if (response.alternatives) {
+      console.log('SECOND IF ACTIVE!')
+      let alternatives = this._quizCard.querySelectorAll('[type=radio]')
+      for (let alternative of Array.from(alternatives)) {
+        alternative.addEventListener('change', () => {
+          answer = alternative.value
+          console.log('Answer changed in second if to: ' + answer)
+        })
+      }
+    }
+    return answer
+  }
+  getAnswer (response) {
+    this._quizCard.querySelector('#button').addEventListener('click', async () => {
+      let answer = this.searchAnswer(response)
+      console.log('Answer submitted: ' + answer)
+      let nextResponse = await this.postData(this.apiURL, { answer: answer })
+      console.log(nextResponse)
+      this.apiURL = nextResponse.nextURL
+      this._updateRendering(nextResponse)
     })
   }
 
   async postData (url, data) {
-    console.log('Data: ' + data)
     console.log('JSON: ' + JSON.stringify(data))
     let response = await window.fetch(url, {
       method: 'POST',
@@ -59,16 +89,6 @@ class QuizGame extends window.HTMLElement {
     })
     response = await response.json()
     return response
-  }
-
-  async getQuestion () {
-    let response = await window.fetch(this.apiURL)
-    response = await response.json()
-    console.log(response)
-    this.question = response.question
-    this.apiURL = response.nextURL
-    this._updateRendering(response)
-    this.getAnswer()
   }
 
   _updateRendering (response) {
@@ -82,12 +102,12 @@ class QuizGame extends window.HTMLElement {
         let label = document.createElement('label')
         let radioButton = document.createElement('input')
         let text = document.createTextNode(response.alternatives[key])
+        radioButton.setAttribute('name', 'alt')
         radioButton.setAttribute('type', 'radio')
         radioButton.setAttribute('value', key)
         label.appendChild(radioButton)
         label.appendChild(text)
         this._quizCard.insertBefore(label, this._quizCard.querySelector('#button'))
-        console.log('Key: ' + key + 'Value: ' + response.alternatives[key])
       })
     }
     question.textContent = this.question
