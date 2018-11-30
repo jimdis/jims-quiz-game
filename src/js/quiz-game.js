@@ -9,12 +9,14 @@ template.innerHTML = /* html */`
 </style>
 <div id="quiz-card">
 <h3 id="question"></h3>
-<label for="answer">Your answer:</label>
-<input type="text" id="input-number" name ="answer">
+<h4>Your answer:</h4>
+<div id="input-div">
+</div>
 <button id="button">Send Answer</button>
-<h3 id="answer"></h3>
+<h3 id="server-answer"></h3>
 </div>
 `
+
 /**
  * A Quiz game component
  *
@@ -31,9 +33,8 @@ class QuizGame extends window.HTMLElement {
     this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
     this._quizCard = this.shadowRoot.querySelector('#quiz-card')
     this.response = null
-    this.question = null
-    this.questionID = 1
   }
+
   connectedCallback () {
     this._quizCard.querySelector('#button').addEventListener('click', async () => {
       let answer = this.getAnswer()
@@ -48,7 +49,6 @@ class QuizGame extends window.HTMLElement {
   async getQuestion () {
     let response = await window.fetch(this.apiURL)
     this.response = await response.json()
-    this.question = this.response.question
     this.apiURL = this.response.nextURL
     this._updateRendering()
   }
@@ -57,7 +57,7 @@ class QuizGame extends window.HTMLElement {
     let answer = 'ANSWER NOT CHANGED!'
     if (this.response.question && !this.response.alternatives) {
       console.log('FIRST IF ACTIVE!')
-      let input = this._quizCard.querySelector('#input-number')
+      let input = this._quizCard.querySelector('#input-text')
       answer = input.value
       console.log('Answer changed in first if to: ' + answer)
     }
@@ -89,10 +89,16 @@ class QuizGame extends window.HTMLElement {
 
   _updateRendering () {
     let question = this._quizCard.querySelector('#question')
-    let answer = this._quizCard.querySelector('#answer')
+    let serverAnswer = this._quizCard.querySelector('#server-answer')
+    let div = this._quizCard.querySelector('#input-div')
+    div.innerHTML = ''
     console.log(this.response)
     if (this.response.question && !this.response.alternatives) {
       console.log('THIS IS INTERPRETED AS A TEXT QUESTION!')
+      let input = document.createElement('input')
+      input.setAttribute('type', 'text')
+      input.setAttribute('id', 'input-text')
+      div.appendChild(input)
     }
     if (this.response.alternatives) {
       console.log('THIS IS INTERPRETED AS AN ALTERNATIVES QUESTION!')
@@ -105,13 +111,13 @@ class QuizGame extends window.HTMLElement {
         radioButton.setAttribute('value', key)
         label.appendChild(radioButton)
         label.appendChild(text)
-        this._quizCard.insertBefore(label, this._quizCard.querySelector('#button'))
+        div.appendChild(label)
       })
     }
-    question.textContent = this.question
-    answer.textContent = ''
+    question.textContent = this.response.question
+    serverAnswer.textContent = ''
     if (!this.response.question) {
-      answer.textContent = this.response.message
+      serverAnswer.textContent = this.response.message
       setTimeout(() => { this.getQuestion() }, 1000)
     }
   }
