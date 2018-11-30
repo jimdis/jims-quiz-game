@@ -3,7 +3,7 @@ template.innerHTML = /* html */`
 <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
 -->
 <style>
-  div .input {
+  label {
     display: block;
   }
 </style>
@@ -74,20 +74,19 @@ class QuizGame extends window.HTMLElement {
   _updateRendering (response) {
     let question = this._quizCard.querySelector('#question')
     let answer = this._quizCard.querySelector('#answer')
+    if (response.question && !response.alternatives) {
+      console.log('textQuestion')
+    }
     if (response.alternatives) {
       Object.keys(response.alternatives).forEach((key) => { // GÅR NEDAN ATT GÖRA ENKLARE MED EN TEMPLATE?
-        let div = document.createElement('div')
-        div.setAttribute('class', 'input')
-        let radioButton = document.createElement('input')
-        radioButton.setAttribute('type', 'radio')
-        radioButton.setAttribute('id', key)
-        radioButton.setAttribute('value', response.alternatives[key])
-        div.appendChild(radioButton)
         let label = document.createElement('label')
-        label.setAttribute('for', key)
-        label.textContent = response.alternatives[key]
-        div.appendChild(label)
-        this._quizCard.insertBefore(div, this._quizCard.querySelector('#button'))
+        let radioButton = document.createElement('input')
+        let text = document.createTextNode(response.alternatives[key])
+        radioButton.setAttribute('type', 'radio')
+        radioButton.setAttribute('value', key)
+        label.appendChild(radioButton)
+        label.appendChild(text)
+        this._quizCard.insertBefore(label, this._quizCard.querySelector('#button'))
         console.log('Key: ' + key + 'Value: ' + response.alternatives[key])
       })
     }
