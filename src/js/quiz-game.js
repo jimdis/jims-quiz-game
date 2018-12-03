@@ -33,14 +33,14 @@ class QuizGame extends window.HTMLElement {
     this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
     this._quizCard = this.shadowRoot.querySelector('#quiz-card')
     this.response = null
+    this.gameOver = false
   }
 
   connectedCallback () {
     this._quizCard.querySelector('#button').addEventListener('click', async () => {
       let answer = this.getAnswer()
-      console.log('Answer submitted: ' + answer)
       this.response = await this.postData(this.apiURL, { answer: answer })
-      this.apiURL = this.response.nextURL
+      this.apiURL = this.response.nextURL ? this.response.nextURL : null
       this._updateRendering()
     })
     this.getQuestion()
@@ -83,6 +83,10 @@ class QuizGame extends window.HTMLElement {
       },
       body: JSON.stringify(data)
     })
+    console.log('RESPONSE CODE: ' + response.status)
+    if (response.status === 400) {
+      this.gameOver = true
+    }
     response = await response.json()
     return response
   }
@@ -118,7 +122,21 @@ class QuizGame extends window.HTMLElement {
     serverAnswer.textContent = ''
     if (!this.response.question) {
       serverAnswer.textContent = this.response.message
-      setTimeout(() => { this.getQuestion() }, 1000)
+      if (this.gameOver) {
+        console.log('PUT GAME OVER IN P!')
+      }
+      if (!this.apiURL) {
+        console.log('THAT WAS THE LAST QUESTION!')
+      }
+      setTimeout(() => {
+        if (this.gameOver) {
+          console.log('GAME OVER')
+        } else if (!this.apiURL) {
+          console.log('CONGRATULATIONS!')
+        } else {
+          this.getQuestion()
+        }
+      }, 1000)
     }
   }
 }
