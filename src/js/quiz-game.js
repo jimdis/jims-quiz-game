@@ -1,3 +1,4 @@
+// import Timer from './Timer.js'
 const template = document.createElement('template')
 template.innerHTML = /* html */`
 <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
@@ -8,6 +9,7 @@ template.innerHTML = /* html */`
   }
 </style>
 <div id="quiz-card">
+<h4>Timer: <span id="timer"><span></h4>
 <h3 id="question"></h3>
 <h4>Your answer:</h4>
 <div id="input-div">
@@ -34,6 +36,7 @@ class QuizGame extends window.HTMLElement {
     this._quizCard = this.shadowRoot.querySelector('#quiz-card')
     this.response = null
     this.gameOver = false
+    this.timer = 0
   }
 
   connectedCallback () {
@@ -44,6 +47,27 @@ class QuizGame extends window.HTMLElement {
       this._updateRendering()
     })
     this.getQuestion()
+    this.setTimer('start')
+  }
+
+  setTimer (action) {
+    let start = new Date().getTime()
+    let elapsed = '0.0'
+    if (action === 'start') {
+      this.timerID = setTimeout(instance.bind(this), 100)
+    }
+    if (action === 'stop') {
+      clearTimeout(this.timerID)
+      console.log('TIMER STOPPED at: ' + this.timer)
+    }
+    function instance () {
+      this.timer += 100
+      elapsed = Math.floor(this.timer / 100) / 10
+      if (Math.round(elapsed) === elapsed) { elapsed += '.0' }
+      let diff = (new Date().getTime() - start) - this.timer
+      this.timerID = setTimeout(instance.bind(this), (100 - diff))
+      this._quizCard.querySelector('#timer').textContent = elapsed
+    }
   }
 
   async getQuestion () {
@@ -131,8 +155,11 @@ class QuizGame extends window.HTMLElement {
       setTimeout(() => {
         if (this.gameOver) {
           console.log('GAME OVER')
+          this.setTimer('stop')
         } else if (!this.apiURL) {
           console.log('CONGRATULATIONS!')
+          this.setTimer('stop')
+          console.log('YOUR TOTAL TIME: ' + this.timer)
         } else {
           this.getQuestion()
         }
