@@ -65,6 +65,8 @@ class QuizGame extends window.HTMLElement {
       this._quizCard.querySelector('#timer').textContent = elapsed
       if (elapsed === '0.0') {
         this.stopTimer()
+        this.gameOver = true
+        this._updateRendering()
       } else {
         this.timerID = setTimeout(timer.bind(this), (100 - diff))
       }
@@ -130,15 +132,24 @@ class QuizGame extends window.HTMLElement {
     let div = this._quizCard.querySelector('#input-div')
     div.innerHTML = ''
     console.log(this.response)
-    if (this.response.question && !this.response.alternatives) {
+    if (this.gameOver) {
+      console.log('GAME OVER!')
+    } else if (!this.apiURL) {
+      console.log('CONGRATULATIONS!')
+      console.log('YOUR TOTAL TIME: ' + this.totalTime)
+    } else if (!this.response.question) {
+      serverAnswer.textContent = this.response.message
+      setTimeout(() => { this.getQuestion() }, 1000)
+    } else if (this.response.question && !this.response.alternatives) {
       console.log('THIS IS INTERPRETED AS A TEXT QUESTION!')
+      question.textContent = this.response.question
       let input = document.createElement('input')
       input.setAttribute('type', 'text')
       input.setAttribute('id', 'input-text')
       div.appendChild(input)
-    }
-    if (this.response.alternatives) {
+    } else if (this.response.alternatives) {
       console.log('THIS IS INTERPRETED AS AN ALTERNATIVES QUESTION!')
+      question.textContent = this.response.question
       Object.keys(this.response.alternatives).forEach((key) => { // GÅR NEDAN ATT GÖRA ENKLARE MED EN TEMPLATE?
         let label = document.createElement('label')
         let radioButton = document.createElement('input')
@@ -151,27 +162,7 @@ class QuizGame extends window.HTMLElement {
         div.appendChild(label)
       })
     }
-    question.textContent = this.response.question
     serverAnswer.textContent = ''
-    if (!this.response.question) {
-      serverAnswer.textContent = this.response.message
-      if (this.gameOver) {
-        console.log('PUT GAME OVER IN P!')
-      }
-      if (!this.apiURL) {
-        console.log('THAT WAS THE LAST QUESTION!')
-      }
-      setTimeout(() => {
-        if (this.gameOver) {
-          console.log('GAME OVER')
-        } else if (!this.apiURL) {
-          console.log('CONGRATULATIONS!')
-          console.log('YOUR TOTAL TIME: ' + this.totalTime)
-        } else {
-          this.getQuestion()
-        }
-      }, 1000)
-    }
   }
 }
 
