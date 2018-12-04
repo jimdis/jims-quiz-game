@@ -42,10 +42,10 @@ class QuizGame extends window.HTMLElement {
 
   connectedCallback () {
     this._quizCard.querySelector('#button').addEventListener('click', async () => {
+      this.stopTimer()
       let answer = this.getAnswer()
       this.response = await this.postData(this.apiURL, { answer: answer })
       this.apiURL = this.response.nextURL ? this.response.nextURL : null
-      this.stopTimer()
       this._updateRendering()
     })
     this.getQuestion()
@@ -54,17 +54,20 @@ class QuizGame extends window.HTMLElement {
   startTimer () {
     this.timer = 0
     let start = new Date().getTime()
-    let elapsed = '0.0'
-    instance.call(this)
+    let elapsed = '20.0'
+    timer.call(this)
 
-    function instance () {
+    function timer () {
       this.timer += 100
-      elapsed = Math.floor(this.timer / 100) / 10
+      elapsed = Math.floor(200 - (this.timer / 100)) / 10
       if (Math.round(elapsed) === elapsed) { elapsed += '.0' }
       let diff = (new Date().getTime() - start) - this.timer
-      console.log(elapsed)
       this._quizCard.querySelector('#timer').textContent = elapsed
-      this.timerID = setTimeout(instance.bind(this), (100 - diff))
+      if (elapsed === '0.0') {
+        this.stopTimer()
+      } else {
+        this.timerID = setTimeout(timer.bind(this), (100 - diff))
+      }
     }
   }
 
