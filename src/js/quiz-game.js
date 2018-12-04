@@ -8,8 +8,14 @@ template.innerHTML = /* html */`
     display: block;
   }
 </style>
+<div id="quiz-header">
+<h4>Please enter your name</h4>
+<input type="text" id="input-name">
+<p id="name"></p>
+<button id="button-start">Start Game!</button>
+</div>
 <div id="quiz-card">
-<h4>Timer: <span id="timer"><span></h4>
+<h4>Timer: <span id="timer"></span></h4>
 <h3 id="question"></h3>
 <h4>Your answer:</h4>
 <div id="input-div">
@@ -38,9 +44,18 @@ class QuizGame extends window.HTMLElement {
     this.gameOver = false
     this.timer = 0
     this.totalTime = 0
+    this.playerName = 'Player 1'
   }
 
   connectedCallback () {
+    this.shadowRoot.querySelector('#button-start').addEventListener('click', () => {
+      this.playerName = this.shadowRoot.querySelector('#input-name').value
+      this.startGame()
+    }, { once: true }
+    )
+  }
+
+  startGame () {
     this._quizCard.querySelector('#button').addEventListener('click', async () => {
       this.stopTimer()
       let answer = this.getAnswer()
@@ -48,6 +63,7 @@ class QuizGame extends window.HTMLElement {
       this.apiURL = this.response.nextURL ? this.response.nextURL : null
       this._updateRendering()
     })
+    console.log(this._quizCard.querySelector('#button'))
     this.getQuestion()
   }
 
@@ -127,6 +143,7 @@ class QuizGame extends window.HTMLElement {
   }
 
   _updateRendering () {
+    console.log('Your name is: ' + this.playerName)
     let question = this._quizCard.querySelector('#question')
     let serverAnswer = this._quizCard.querySelector('#server-answer')
     let div = this._quizCard.querySelector('#input-div')
