@@ -4,6 +4,9 @@ template.innerHTML = /* html */`
 <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
 -->
 <style>
+  :host {
+    display: block;
+  }
   label {
     display: block;
   }
@@ -143,7 +146,6 @@ class QuizGame extends window.HTMLElement {
   }
 
   populateStorage () {
-    debugger
     let worstHighScore = 0
     Object.keys(window.localStorage).forEach((key) => {
       let score = parseInt(window.localStorage.getItem(key), 10)

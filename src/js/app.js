@@ -1,1 +1,1 @@
-import './quiz-game.js'
+import './jims-quiz-game.js'
