@@ -37,6 +37,7 @@ class QuizGame extends window.HTMLElement {
     this.response = null
     this.gameOver = false
     this.timer = 0
+    this.totalTime = 0
   }
 
   connectedCallback () {
@@ -44,22 +45,18 @@ class QuizGame extends window.HTMLElement {
       let answer = this.getAnswer()
       this.response = await this.postData(this.apiURL, { answer: answer })
       this.apiURL = this.response.nextURL ? this.response.nextURL : null
+      this.stopTimer()
       this._updateRendering()
     })
     this.getQuestion()
-    this.setTimer('start')
   }
 
-  setTimer (action) {
+  startTimer () {
+    this.timer = 0
     let start = new Date().getTime()
     let elapsed = '0.0'
-    if (action === 'start') {
-      instance.call(this)
-    }
-    if (action === 'stop') {
-      clearTimeout(this.timerID)
-      console.log('TIMER STOPPED at: ' + this.timer)
-    }
+    instance.call(this)
+
     function instance () {
       this.timer += 100
       elapsed = Math.floor(this.timer / 100) / 10
@@ -71,11 +68,19 @@ class QuizGame extends window.HTMLElement {
     }
   }
 
+  stopTimer () {
+    clearTimeout(this.timerID)
+    this.totalTime += this.timer
+    console.log('Total time is: ' + this.totalTime)
+    console.log('TIMER STOPPED at: ' + this.timer)
+  }
+
   async getQuestion () {
     let response = await window.fetch(this.apiURL)
     this.response = await response.json()
     this.apiURL = this.response.nextURL
     this._updateRendering()
+    this.startTimer()
   }
 
   getAnswer () {
@@ -156,11 +161,9 @@ class QuizGame extends window.HTMLElement {
       setTimeout(() => {
         if (this.gameOver) {
           console.log('GAME OVER')
-          this.setTimer('stop')
         } else if (!this.apiURL) {
           console.log('CONGRATULATIONS!')
-          this.setTimer('stop')
-          console.log('YOUR TOTAL TIME: ' + this.timer)
+          console.log('YOUR TOTAL TIME: ' + this.totalTime)
         } else {
           this.getQuestion()
         }
