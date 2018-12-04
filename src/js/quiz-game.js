@@ -63,7 +63,7 @@ class QuizGame extends window.HTMLElement {
       this.apiURL = this.response.nextURL ? this.response.nextURL : null
       this._updateRendering()
     })
-    console.log(this._quizCard.querySelector('#button'))
+    this.getHighScores()
     this.getQuestion()
   }
 
@@ -142,8 +142,27 @@ class QuizGame extends window.HTMLElement {
     return response
   }
 
+  populateStorage () {
+    debugger
+    let worstHighScore = 0
+    Object.keys(window.localStorage).forEach((key) => {
+      let score = parseInt(window.localStorage.getItem(key), 10)
+      if (score >= worstHighScore) {
+        worstHighScore = score
+      }
+    })
+    if (this.totalTime <= worstHighScore) {
+      window.localStorage.setItem(this.playerName, this.totalTime)
+    }
+  }
+
+  getHighScores () {
+    Object.keys(window.localStorage).forEach((key) => {
+      console.log(`Name: ${key}, Time: ${window.localStorage.getItem(key)}`)
+    })
+  }
+
   _updateRendering () {
-    console.log('Your name is: ' + this.playerName)
     let question = this._quizCard.querySelector('#question')
     let serverAnswer = this._quizCard.querySelector('#server-answer')
     let div = this._quizCard.querySelector('#input-div')
@@ -154,18 +173,22 @@ class QuizGame extends window.HTMLElement {
     } else if (!this.apiURL) {
       console.log('CONGRATULATIONS!')
       console.log('YOUR TOTAL TIME: ' + this.totalTime)
+      this.populateStorage()
     } else if (!this.response.question) {
       serverAnswer.textContent = this.response.message
       setTimeout(() => { this.getQuestion() }, 1000)
     } else if (this.response.question && !this.response.alternatives) {
       console.log('THIS IS INTERPRETED AS A TEXT QUESTION!')
+      serverAnswer.textContent = ''
       question.textContent = this.response.question
       let input = document.createElement('input')
       input.setAttribute('type', 'text')
       input.setAttribute('id', 'input-text')
       div.appendChild(input)
     } else if (this.response.alternatives) {
+      this.populateStorage()
       console.log('THIS IS INTERPRETED AS AN ALTERNATIVES QUESTION!')
+      serverAnswer.textContent = ''
       question.textContent = this.response.question
       Object.keys(this.response.alternatives).forEach((key) => { // GÅR NEDAN ATT GÖRA ENKLARE MED EN TEMPLATE?
         let label = document.createElement('label')
@@ -179,7 +202,6 @@ class QuizGame extends window.HTMLElement {
         div.appendChild(label)
       })
     }
-    serverAnswer.textContent = ''
   }
 }
 
