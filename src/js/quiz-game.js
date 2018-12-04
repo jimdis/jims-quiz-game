@@ -54,7 +54,7 @@ class QuizGame extends window.HTMLElement {
     let start = new Date().getTime()
     let elapsed = '0.0'
     if (action === 'start') {
-      this.timerID = setTimeout(instance.bind(this), 100)
+      instance.call(this)
     }
     if (action === 'stop') {
       clearTimeout(this.timerID)
@@ -65,8 +65,9 @@ class QuizGame extends window.HTMLElement {
       elapsed = Math.floor(this.timer / 100) / 10
       if (Math.round(elapsed) === elapsed) { elapsed += '.0' }
       let diff = (new Date().getTime() - start) - this.timer
-      this.timerID = setTimeout(instance.bind(this), (100 - diff))
+      console.log(elapsed)
       this._quizCard.querySelector('#timer').textContent = elapsed
+      this.timerID = setTimeout(instance.bind(this), (100 - diff))
     }
   }
 
