@@ -6,9 +6,21 @@ template.innerHTML = /* html */`
 <style>
   :host {
     display: block;
+    width: 50%;
+    margin: 10px 0 10px;
+    border: 1px solid grey;
   }
+  :host([hidden]) {
+        display: none;
+      }
   label {
     display: block;
+  }
+  input {
+    width: 50%;
+  }
+  .hidden {
+    display: none;
   }
 </style>
 <div id="quiz-header">
@@ -24,7 +36,7 @@ template.innerHTML = /* html */`
 <h4>Your answer:</h4>
 <div id="input-div">
 </div>
-<button id="button">Send Answer</button>
+<button id="button-answer">Send Answer</button>
 <h3 id="server-answer"></h3>
 </div>
 `
@@ -42,19 +54,11 @@ class QuizGame extends window.HTMLElement {
 
     this.attachShadow({ mode: 'open' })
     this.shadowRoot.appendChild(template.content.cloneNode(true))
-    this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
-    this._quizCard = this.shadowRoot.querySelector('#quiz-card')
-    // this.response = null
-    // this.gameOver = false
-    // this.timer = 0
-    // this.totalTime = 0
-    this.playerName = 'Player 1'
   }
 
   connectedCallback () {
     this.totalTime = 0
     this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
-    this.response = null
     this.gameOver = false
     this.shadowRoot.querySelector('#button-start').addEventListener('click', () => {
       this.playerName = this.shadowRoot.querySelector('#input-name').value
@@ -63,17 +67,17 @@ class QuizGame extends window.HTMLElement {
     }, { once: true }
     )
     // Save refer to we can remove listener later.
-    this.boundStartGame = this.startGame.bind(this)
+    this.boundSendAnswer = this.sendAnswer.bind(this)
 
-    this._quizCard.querySelector('#button').addEventListener('click', this.boundStartGame)
+    this.shadowRoot.querySelector('#button-answer').addEventListener('click', this.boundSendAnswer)
     this.shadowRoot.querySelector('#button-restart').addEventListener('click', this.restartGame.bind(this), { once: true })
   }
 
   disconnectedCallback () {
-    this._quizCard.querySelector('#button').removeEventListener('click', this.boundStartGame)
+    this.shadowRoot.querySelector('#button-answer').removeEventListener('click', this.boundSendAnswer)
   }
 
-  async startGame () {
+  async sendAnswer () {
     this.stopTimer()
     let answer = this.getAnswer()
     this.response = await this.postData(this.apiURL, { answer: answer })
@@ -98,7 +102,7 @@ class QuizGame extends window.HTMLElement {
       elapsed = Math.floor(200 - (this.timer / 100)) / 10
       if (Math.round(elapsed) === elapsed) { elapsed += '.0' }
       let diff = (new Date().getTime() - start) - this.timer
-      this._quizCard.querySelector('#timer').textContent = elapsed
+      this.shadowRoot.querySelector('#timer').textContent = elapsed
       if (elapsed === '0.0') {
         this.stopTimer()
         this.gameOver = true
@@ -125,28 +129,22 @@ class QuizGame extends window.HTMLElement {
   }
 
   getAnswer () {
-    let answer = 'ANSWER NOT CHANGED!'
-    if (this.response.question && !this.response.alternatives) {
-      console.log('FIRST IF ACTIVE!')
-      let input = this._quizCard.querySelector('#input-text')
-      answer = input.value
-      console.log('Answer changed in first if to: ' + answer)
-    }
+    let answer
     if (this.response.alternatives) {
-      console.log('SECOND IF ACTIVE!')
-      let alternatives = this._quizCard.querySelectorAll('[type=radio]')
+      let alternatives = this.shadowRoot.querySelectorAll('[type=radio]')
       for (let alternative of Array.from(alternatives)) {
         if (alternative.checked) {
           answer = alternative.value
         }
       }
-      console.log('Answer changed in second if to: ' + answer)
+    } else {
+      let input = this.shadowRoot.querySelector('#input-text')
+      answer = input.value
     }
     return answer
   }
 
   async postData (url, data) {
-    console.log('JSON: ' + JSON.stringify(data))
     let response = await window.fetch(url, {
       method: 'POST',
       headers: {
@@ -154,7 +152,6 @@ class QuizGame extends window.HTMLElement {
       },
       body: JSON.stringify(data)
     })
-    console.log('RESPONSE CODE: ' + response.status)
     if (response.status === 400) {
       this.gameOver = true
     }
@@ -181,13 +178,23 @@ class QuizGame extends window.HTMLElement {
     })
   }
 
+  toggleHide (element) {
+    if (element.classList.contains('hidden')) {
+      element.classList.remove('hidden')
+    } else {
+      element.classList.add('hidden')
+    }
+  }
+
   _updateRendering () {
-    let question = this._quizCard.querySelector('#question')
-    let serverAnswer = this._quizCard.querySelector('#server-answer')
-    let div = this._quizCard.querySelector('#input-div')
+    let quizCard = this.shadowRoot.querySelector('#quiz-card')
+    let question = this.shadowRoot.querySelector('#question')
+    let serverAnswer = this.shadowRoot.querySelector('#server-answer')
+    let div = this.shadowRoot.querySelector('#input-div')
     div.innerHTML = ''
     console.log(this.response)
     if (this.gameOver) {
+      serverAnswer.textContent = this.response.message
       console.log('GAME OVER!')
     } else if (!this.apiURL) {
       console.log('CONGRATULATIONS!')
