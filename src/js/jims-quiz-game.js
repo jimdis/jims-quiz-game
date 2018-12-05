@@ -16,6 +16,7 @@ template.innerHTML = /* html */`
 <input type="text" id="input-name">
 <p id="name"></p>
 <button id="button-start">Start Game!</button>
+<button id="button-restart">Restart Game!</button>
 </div>
 <div id="quiz-card">
 <h4>Timer: <span id="timer"></span></h4>
@@ -43,31 +44,47 @@ class QuizGame extends window.HTMLElement {
     this.shadowRoot.appendChild(template.content.cloneNode(true))
     this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
     this._quizCard = this.shadowRoot.querySelector('#quiz-card')
-    this.response = null
-    this.gameOver = false
-    this.timer = 0
-    this.totalTime = 0
+    // this.response = null
+    // this.gameOver = false
+    // this.timer = 0
+    // this.totalTime = 0
     this.playerName = 'Player 1'
   }
 
   connectedCallback () {
+    this.totalTime = 0
+    this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
+    this.response = null
+    this.gameOver = false
     this.shadowRoot.querySelector('#button-start').addEventListener('click', () => {
       this.playerName = this.shadowRoot.querySelector('#input-name').value
-      this.startGame()
+      this.getHighScores()
+      this.getQuestion()
     }, { once: true }
     )
+    // Save refer to we can remove listener later.
+    this.boundStartGame = this.startGame.bind(this)
+
+    this._quizCard.querySelector('#button').addEventListener('click', this.boundStartGame)
+    this.shadowRoot.querySelector('#button-restart').addEventListener('click', this.restartGame.bind(this), { once: true })
   }
 
-  startGame () {
-    this._quizCard.querySelector('#button').addEventListener('click', async () => {
-      this.stopTimer()
-      let answer = this.getAnswer()
-      this.response = await this.postData(this.apiURL, { answer: answer })
-      this.apiURL = this.response.nextURL ? this.response.nextURL : null
-      this._updateRendering()
-    })
-    this.getHighScores()
-    this.getQuestion()
+  disconnectedCallback () {
+    this._quizCard.querySelector('#button').removeEventListener('click', this.boundStartGame)
+  }
+
+  async startGame () {
+    this.stopTimer()
+    let answer = this.getAnswer()
+    this.response = await this.postData(this.apiURL, { answer: answer })
+    this.apiURL = this.response.nextURL ? this.response.nextURL : null
+    this._updateRendering()
+  }
+
+  restartGame () {
+    this.stopTimer()
+    this.disconnectedCallback()
+    this.connectedCallback()
   }
 
   startTimer () {
