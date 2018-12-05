@@ -23,21 +23,24 @@ template.innerHTML = /* html */`
     display: none;
   }
 </style>
-<div id="quiz-header">
-<h4>Please enter your name</h4>
-<input type="text" id="input-name">
-<p id="name"></p>
-<button id="button-start">Start Game!</button>
-<button id="button-restart">Restart Game!</button>
+<div id="startDiv">
+<h4>Please enter a nickname:</h4>
+<input type="text" id="input-name" autofocus placeholder="Your cool nickname here...">
+<button id="buttonStart">Start Game!</button>
 </div>
-<div id="quiz-card">
+<div id="questionDiv">
 <h4>Timer: <span id="timer"></span></h4>
 <h3 id="question"></h3>
 <h4>Your answer:</h4>
-<div id="input-div">
+<div id="inputDiv">
 </div>
-<button id="button-answer">Send Answer</button>
-<h3 id="server-answer"></h3>
+<button id="buttonAnswer">Send Answer</button>
+</div>
+<div id="answerDiv">
+<h3 id="serverAnswer"></h3>
+<p id="customAnswer"></p>
+<button id="buttonRestart">Restart Game!</button>
+<button id="buttonGetQuestion">Next Question!</button>
 </div>
 `
 
@@ -60,7 +63,7 @@ class QuizGame extends window.HTMLElement {
     this.totalTime = 0
     this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
     this.gameOver = false
-    this.shadowRoot.querySelector('#button-start').addEventListener('click', () => {
+    this.shadowRoot.querySelector('#buttonStart').addEventListener('click', () => {
       this.playerName = this.shadowRoot.querySelector('#input-name').value
       this.getHighScores()
       this.getQuestion()
@@ -68,13 +71,16 @@ class QuizGame extends window.HTMLElement {
     )
     // Save refer to we can remove listener later.
     this.boundSendAnswer = this.sendAnswer.bind(this)
+    this.boundGetQuestion = this.getQuestion.bind(this)
 
-    this.shadowRoot.querySelector('#button-answer').addEventListener('click', this.boundSendAnswer)
-    this.shadowRoot.querySelector('#button-restart').addEventListener('click', this.restartGame.bind(this), { once: true })
+    this.shadowRoot.querySelector('#buttonAnswer').addEventListener('click', this.boundSendAnswer)
+    this.shadowRoot.querySelector('#buttonGetQuestion').addEventListener('click', this.boundGetQuestion)
+    this.shadowRoot.querySelector('#buttonRestart').addEventListener('click', this.restartGame.bind(this), { once: true })
   }
 
   disconnectedCallback () {
-    this.shadowRoot.querySelector('#button-answer').removeEventListener('click', this.boundSendAnswer)
+    this.shadowRoot.querySelector('#buttonAnswer').removeEventListener('click', this.boundSendAnswer)
+    this.shadowRoot.querySelector('#buttonGetQuestion').removeEventListener('click', this.boundGetQuestion)
   }
 
   async sendAnswer () {
@@ -187,10 +193,10 @@ class QuizGame extends window.HTMLElement {
   }
 
   _updateRendering () {
-    let quizCard = this.shadowRoot.querySelector('#quiz-card')
+    let questionDiv = this.shadowRoot.querySelector('#questionDiv')
     let question = this.shadowRoot.querySelector('#question')
-    let serverAnswer = this.shadowRoot.querySelector('#server-answer')
-    let div = this.shadowRoot.querySelector('#input-div')
+    let serverAnswer = this.shadowRoot.querySelector('#serverAnswer')
+    let div = this.shadowRoot.querySelector('#inputDiv')
     div.innerHTML = ''
     console.log(this.response)
     if (this.gameOver) {
@@ -202,7 +208,6 @@ class QuizGame extends window.HTMLElement {
       this.populateStorage()
     } else if (!this.response.question) {
       serverAnswer.textContent = this.response.message
-      setTimeout(() => { this.getQuestion() }, 1000)
     } else if (this.response.question && !this.response.alternatives) {
       console.log('THIS IS INTERPRETED AS A TEXT QUESTION!')
       serverAnswer.textContent = ''
