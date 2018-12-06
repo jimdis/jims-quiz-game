@@ -135,10 +135,22 @@ class QuizGame extends window.HTMLElement {
   }
 
   buttonClicked (form) {
-    console.log('Saving value', form.elements.playerName.value)
+    console.log('Game state: ' + this.gameState)
     if (this.gameState === 'start') {
       this.gameState = 'question'
+      this.playerName = form.playerName.value
+      console.log(this.playerName)
       this.getQuestion()
+    } else if (this.gameState === 'question') {
+      this.gameState = 'answer'
+      this.sendAnswer(form)
+    } else if (this.gameState === 'answer') {
+      this.gameState = 'question'
+      this.getQuestion()
+    } else if (this.gameState === 'gameOver') {
+      this.stopTimer()
+      this.disconnectedCallback()
+      this.connectedCallback()
     }
   }
 
@@ -150,9 +162,9 @@ class QuizGame extends window.HTMLElement {
     this.startTimer()
   }
 
-  async sendAnswer () {
+  async sendAnswer (form) {
     this.stopTimer()
-    let answer = this.getAnswer()
+    let answer = form.inputAnswer.value
     this.response = await this.postData(this.apiURL, { answer: answer })
     this.apiURL = this.response.nextURL ? this.response.nextURL : null
     this._updateRendering()
@@ -218,7 +230,7 @@ class QuizGame extends window.HTMLElement {
       body: JSON.stringify(data)
     })
     if (response.status === 400) {
-      this.gameOver = true
+      this.gameState = 'gameOver'
     }
     response = await response.json()
     return response
@@ -263,6 +275,7 @@ class QuizGame extends window.HTMLElement {
     this.hideElement($('#answerDiv'))
     this.hideElement($('#inputAnswer'))
     $('#inputName').required = false
+    $('#inputAnswer').required = false
 
     if (this.gameState === 'start') {
       $('#inputName').required = true
@@ -280,6 +293,20 @@ class QuizGame extends window.HTMLElement {
         this.showElement($('#inputAnswer'))
         $('#inputAnswer').focus()
       }
+    }
+
+    if (this.gameState === 'answer') {
+      $('#serverAnswer').textContent = this.response.message
+      this.showElement($('#answerDiv'))
+      $('button').textContent = 'Next Question!'
+      $('button').focus()
+    }
+
+    if (this.gameState === 'gameOver') {
+      $('#serverAnswer').textContent = this.response.message
+      $('#customAnswer').textContent = 'GAME OVER!'
+      this.showElement($('#answerDiv'))
+      $('button').textContent = 'Play Again!'
     }
     // else if ()
 
