@@ -148,7 +148,7 @@ class QuizGame extends window.HTMLElement {
     } else if (this.gameState === 'answer') {
       this.gameState = 'question'
       this.getQuestion()
-    } else if (this.gameState === 'gameOver') {
+    } else if (this.gameState === 'gameOver' || this.gameState === 'gameFinished') {
       this.stopTimer()
       this.disconnectedCallback()
       this.connectedCallback()
@@ -168,59 +168,14 @@ class QuizGame extends window.HTMLElement {
     let answer = form.inputAnswer.value ? form.inputAnswer.value : form.alt.value
     console.log(answer)
     this.response = await this.postData(this.apiURL, { answer: answer })
-    this.apiURL = this.response.nextURL ? this.response.nextURL : null
-    this._updateRendering()
-  }
-
-  restartGame () {
-    this.stopTimer()
-    this.disconnectedCallback()
-    this.connectedCallback()
-  }
-
-  startTimer () {
-    this.timer = 0
-    let start = new Date().getTime()
-    let elapsed = '20.0'
-    timer.call(this)
-
-    function timer () {
-      this.timer += 100
-      elapsed = Math.floor(200 - (this.timer / 100)) / 10
-      if (Math.round(elapsed) === elapsed) { elapsed += '.0' }
-      let diff = (new Date().getTime() - start) - this.timer
-      this.shadowRoot.querySelector('#timer').textContent = elapsed
-      if (elapsed === '0.0') {
-        this.stopTimer()
-        this.gameOver = true
-        this._updateRendering()
-      } else {
-        this.timerID = setTimeout(timer.bind(this), (100 - diff))
-      }
-    }
-  }
-
-  stopTimer () {
-    clearTimeout(this.timerID)
-    this.totalTime += this.timer
-    console.log('Total time is: ' + this.totalTime)
-    console.log('TIMER STOPPED at: ' + this.timer)
-  }
-
-  getAnswer () {
-    let answer
-    if (this.response.alternatives) {
-      let alternatives = this.shadowRoot.querySelectorAll('[type=radio]')
-      for (let alternative of Array.from(alternatives)) {
-        if (alternative.checked) {
-          answer = alternative.value
-        }
-      }
+    if (!this.response.nextURL && this.gameState !== 'gameOver') {
+      this.apiURL = null
+      this.gameState = 'gameFinished'
+      this.populateStorage()
     } else {
-      let input = this.shadowRoot.querySelector('#inputText')
-      answer = input.value
+      this.apiURL = this.response.nextURL
     }
-    return answer
+    this._updateRendering()
   }
 
   async postData (url, data) {
@@ -237,6 +192,58 @@ class QuizGame extends window.HTMLElement {
     response = await response.json()
     return response
   }
+
+  // restartGame () {
+  //   this.stopTimer()
+  //   this.disconnectedCallback()
+  //   this.connectedCallback()
+  // }
+
+  startTimer () {
+    this.timer = 0
+    let start = new Date().getTime()
+    let elapsed = '20.0'
+    timer.call(this)
+
+    function timer () {
+      this.timer += 100
+      elapsed = Math.floor(200 - (this.timer / 100)) / 10
+      if (Math.round(elapsed) === elapsed) { elapsed += '.0' }
+      let diff = (new Date().getTime() - start) - this.timer
+      this.shadowRoot.querySelector('#timer').textContent = elapsed
+      if (elapsed === '0.0') {
+        this.stopTimer()
+        this.gameState = 'gameOver'
+        this.timeOut = true
+        this._updateRendering()
+      } else {
+        this.timerID = setTimeout(timer.bind(this), (100 - diff))
+      }
+    }
+  }
+
+  stopTimer () {
+    clearTimeout(this.timerID)
+    this.totalTime += this.timer
+    console.log('Total time is: ' + this.totalTime)
+    console.log('TIMER STOPPED at: ' + this.timer)
+  }
+
+  // getAnswer () {
+  //   let answer
+  //   if (this.response.alternatives) {
+  //     let alternatives = this.shadowRoot.querySelectorAll('[type=radio]')
+  //     for (let alternative of Array.from(alternatives)) {
+  //       if (alternative.checked) {
+  //         answer = alternative.value
+  //       }
+  //     }
+  //   } else {
+  //     let input = this.shadowRoot.querySelector('#inputText')
+  //     answer = input.value
+  //   }
+  //   return answer
+  // }
 
   populateStorage () {
     let worstHighScore = 0
@@ -276,7 +283,7 @@ class QuizGame extends window.HTMLElement {
     this.hideElement($('#questionDiv'))
     this.hideElement($('#answerDiv'))
     this.hideElement($('#inputAnswer'))
-    this.hideElement($('#radioButtons'))
+    $('#radioButtons').textContent = null
     $('#inputName').required = false
     $('#inputAnswer').required = false
 
@@ -321,11 +328,25 @@ class QuizGame extends window.HTMLElement {
     }
 
     if (this.gameState === 'gameOver') {
-      $('#serverAnswer').textContent = this.response.message
-      $('#customAnswer').textContent = 'GAME OVER!'
+      if (this.timeOut) {
+        $('#customAnswer').textContent = 'Time is out! GAME OVER!'
+      } else {
+        $('#serverAnswer').textContent = this.response.message
+        $('#customAnswer').textContent = 'GAME OVER!'
+      }
       this.showElement($('#answerDiv'))
       $('button').textContent = 'Play Again!'
     }
+
+    if (this.gameState === 'gameFinished') {
+      $('#serverAnswer').textContent = this.response.message
+      $('#customAnswer').textContent = 'Congratulations! You passed the quiz!'
+      this.showElement($('#answerDiv'))
+      // SHOW HIGHSCORE!
+      this.getHighScores()
+      $('button').textContent = 'Play Again!'
+    }
+
     // else if ()
 
     // let startDiv = this.shadowRoot.querySelector('#startDiv')
