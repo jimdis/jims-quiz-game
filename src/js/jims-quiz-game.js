@@ -61,7 +61,8 @@ template.innerHTML = /* html */`
   button:hover {
     background-color: #ff4c4c;
 }
-  .hidden {
+  .hidden,
+  div .hidden {
     display: none;
   }
 </style>
@@ -74,8 +75,8 @@ template.innerHTML = /* html */`
 <h4>Timer: <span id="timer"></span></h4>
 <h3 id="question"></h3>
 <h4>Your answer:</h4>
-<div id="inputDiv">
 <input type='text' name="textAnswer" id='inputAnswer' class="hidden" autocomplete="off" placeholder="Type your answer here...">
+<div id="radioButtons">
 </div>
 </div>
 <div id="answerDiv" class="hidden">
@@ -164,7 +165,8 @@ class QuizGame extends window.HTMLElement {
 
   async sendAnswer (form) {
     this.stopTimer()
-    let answer = form.inputAnswer.value
+    let answer = form.inputAnswer.value ? form.inputAnswer.value : form.alt.value
+    console.log(answer)
     this.response = await this.postData(this.apiURL, { answer: answer })
     this.apiURL = this.response.nextURL ? this.response.nextURL : null
     this._updateRendering()
@@ -274,6 +276,7 @@ class QuizGame extends window.HTMLElement {
     this.hideElement($('#questionDiv'))
     this.hideElement($('#answerDiv'))
     this.hideElement($('#inputAnswer'))
+    this.hideElement($('#radioButtons'))
     $('#inputName').required = false
     $('#inputAnswer').required = false
 
@@ -288,7 +291,22 @@ class QuizGame extends window.HTMLElement {
       $('#question').textContent = this.response.question
       this.showElement($('#questionDiv'))
       $('button').textContent = 'Submit Answer!'
-      if (this.response.question && !this.response.alternatives) {
+      if (this.response.alternatives) {
+        $('#inputAnswer').value = null
+        Object.keys(this.response.alternatives).forEach((key) => {
+          let label = document.createElement('label')
+          let radioButton = document.createElement('input')
+          let text = document.createTextNode(this.response.alternatives[key])
+          radioButton.name = 'alt'
+          radioButton.type = 'radio'
+          radioButton.value = key
+          radioButton.required = true
+          label.appendChild(radioButton)
+          label.appendChild(text)
+          $('#radioButtons').appendChild(label)
+          this.showElement($('#radioButtons'))
+        })
+      } else {
         $('#inputAnswer').required = true
         this.showElement($('#inputAnswer'))
         $('#inputAnswer').focus()
