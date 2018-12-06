@@ -65,6 +65,27 @@ template.innerHTML = /* html */`
   div .hidden {
     display: none;
   }
+  table {
+    width: 70%;
+    margin: 20px auto;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+th,
+td {
+    padding: 10px;
+}
+
+th {
+    background-color: #FF6B6B;
+    color: #fff;
+}
+
+td:nth-child(1) {
+    color: #FF6B6B;
+}
+
 </style>
 <form action="">
 <div id="startDiv" class="hidden">
@@ -81,11 +102,25 @@ template.innerHTML = /* html */`
 </div>
 <div id="answerDiv" class="hidden">
 <h3 id="serverAnswer"></h3>
-<p id="customAnswer"></p>
-<p id="totalTime"></p>
+<h4 id="customAnswer"></h4>
+<h4 id="totalTime"></h4>
+</div>
+<div id="highScoreDiv">
+<h3>High Score</h3>
+<table id="highScoreTable">
+<head>
+<tr>
+<th>Name</th>
+<th>Time</th>
+</tr>
+</head>
+<tbody>
+</tbody>
+</table>
 </div>
 <button id="formButton" type="submit">BOILERPLATE</button>
 </form>
+
 `
 
 /**
@@ -136,7 +171,6 @@ class QuizGame extends window.HTMLElement {
   }
 
   buttonClicked (form) {
-    console.log('Game state: ' + this.gameState)
     if (this.gameState === 'start') {
       this.gameState = 'question'
       this.playerName = form.playerName.value
@@ -193,12 +227,6 @@ class QuizGame extends window.HTMLElement {
     return response
   }
 
-  // restartGame () {
-  //   this.stopTimer()
-  //   this.disconnectedCallback()
-  //   this.connectedCallback()
-  // }
-
   startTimer () {
     this.timer = 0
     let start = new Date().getTime()
@@ -246,23 +274,22 @@ class QuizGame extends window.HTMLElement {
   // }
 
   populateStorage () {
-    let worstHighScore = 0
-    Object.keys(window.localStorage).forEach((key) => {
-      let score = parseInt(window.localStorage.getItem(key), 10)
-      if (score >= worstHighScore) {
-        worstHighScore = score
-      }
-    })
-    if (this.totalTime <= worstHighScore || window.localStorage.length < 5) {
+    let highScores = this.getHighScores()
+    let worstHighScore = highScores[4][1]
+    let worstPlayer = highScores[4][0]
+    if (this.totalTime < worstHighScore) {
       window.localStorage.setItem(this.playerName, this.totalTime)
+      window.localStorage.removeItem(worstPlayer)
     }
   }
 
   getHighScores () {
-    console.log('Highscores:')
+    let arr = []
     Object.keys(window.localStorage).forEach((key) => {
-      console.log(`Name: ${key}, Time: ${window.localStorage.getItem(key)}`)
+      arr.push([key, parseInt(window.localStorage.getItem(key), 10)])
     })
+    arr.sort((a, b) => a[1] - b[1])
+    return arr.slice(0, 5)
   }
 
   showElement (element) {
@@ -283,13 +310,13 @@ class QuizGame extends window.HTMLElement {
     this.hideElement($('#questionDiv'))
     this.hideElement($('#answerDiv'))
     this.hideElement($('#inputAnswer'))
+    this.hideElement($('#highScoreDiv'))
     $('#radioButtons').textContent = null
     $('#inputName').required = false
     $('#inputAnswer').required = false
 
     if (this.gameState === 'start') {
       $('#inputName').required = true
-      console.log($('#inputName').name)
       this.showElement($('#startDiv'))
       $('#inputName').focus()
     }
@@ -341,9 +368,20 @@ class QuizGame extends window.HTMLElement {
     if (this.gameState === 'gameFinished') {
       $('#serverAnswer').textContent = this.response.message
       $('#customAnswer').textContent = 'Congratulations! You passed the quiz!'
+      $('#totalTime').textContent = `Your total time was ${this.totalTime / 1000} seconds`
       this.showElement($('#answerDiv'))
-      // SHOW HIGHSCORE!
-      this.getHighScores()
+      this.showElement($('#highScoreDiv'))
+      let highScores = this.getHighScores()
+      for (let player of highScores) {
+        let tr = document.createElement('tr')
+        let tdName = document.createElement('td')
+        let tdScore = document.createElement('td')
+        tdName.textContent = player[0]
+        tdScore.textContent = `${Math.floor(player[1] / 100) / 10} seconds`
+        tr.appendChild(tdName)
+        tr.appendChild(tdScore)
+        $('#highScoreTable tbody').appendChild(tr)
+      }
       $('button').textContent = 'Play Again!'
     }
 
