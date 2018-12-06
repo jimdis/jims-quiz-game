@@ -65,26 +65,26 @@ template.innerHTML = /* html */`
     display: none;
   }
 </style>
-<div id="startDiv">
+<form action="">
+<div id="startDiv" class="hidden">
 <h4>Please enter a nickname:</h4>
-<input type="text" id="input-name" autofocus placeholder="Your cool nickname here...">
-<button id="buttonStart">Start Game!</button>
+<input type="text" name="playerName" id="inputName" autocomplete="off" placeholder="Your cool nickname here...">
 </div>
 <div id="questionDiv" class="hidden">
 <h4>Timer: <span id="timer"></span></h4>
 <h3 id="question"></h3>
 <h4>Your answer:</h4>
 <div id="inputDiv">
+<input type='text' name="textAnswer" id='inputAnswer' class="hidden" autocomplete="off" placeholder="Type your answer here...">
 </div>
-<button id="buttonAnswer">Send Answer</button>
 </div>
 <div id="answerDiv" class="hidden">
 <h3 id="serverAnswer"></h3>
 <p id="customAnswer"></p>
 <p id="totalTime"></p>
-<button id="buttonRestart" class="hidden">Restart Game!</button>
-<button id="buttonGetQuestion">Next Question!</button>
 </div>
+<button id="formButton" type="submit">BOILERPLATE</button>
+</form>
 `
 
 /**
@@ -107,24 +107,47 @@ class QuizGame extends window.HTMLElement {
     this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
     this.response = null
     this.gameOver = false
-    this.shadowRoot.querySelector('#buttonStart').addEventListener('click', () => {
-      this.playerName = this.shadowRoot.querySelector('#input-name').value
-      this.getQuestion()
-    }, { once: true }
-    )
+    this.gameState = 'start'
+    // this.shadowRoot.querySelector('#buttonStart').addEventListener('click', () => {
+    //   this.playerName = this.shadowRoot.querySelector('#inputName').value
+    //   this.getQuestion()
+    // }, { once: true }
+    // )
     // Save refer so we can remove listener later.
-    this.boundSendAnswer = this.sendAnswer.bind(this)
-    this.boundGetQuestion = this.getQuestion.bind(this)
+    // this.boundSendAnswer = this.sendAnswer.bind(this)
+    // this.boundGetQuestion = this.getQuestion.bind(this)
 
-    this.shadowRoot.querySelector('#buttonAnswer').addEventListener('click', this.boundSendAnswer)
-    this.shadowRoot.querySelector('#buttonGetQuestion').addEventListener('click', this.boundGetQuestion)
-    this.shadowRoot.querySelector('#buttonRestart').addEventListener('click', this.restartGame.bind(this), { once: true })
+    // this.shadowRoot.querySelector('#buttonAnswer').addEventListener('click', this.boundSendAnswer)
+    // this.shadowRoot.querySelector('#buttonGetQuestion').addEventListener('click', this.boundGetQuestion)
+    // this.shadowRoot.querySelector('#buttonRestart').addEventListener('click', this.restartGame.bind(this), { once: true })
+    let form = this.shadowRoot.querySelector('form')
+    form.querySelector('button').textContent = 'Start Game!'
+    form.addEventListener('submit', event => {
+      this.buttonClicked(form)
+      event.preventDefault()
+    })
     this._updateRendering()
   }
 
   disconnectedCallback () {
     this.shadowRoot.querySelector('#buttonAnswer').removeEventListener('click', this.boundSendAnswer)
     this.shadowRoot.querySelector('#buttonGetQuestion').removeEventListener('click', this.boundGetQuestion)
+  }
+
+  buttonClicked (form) {
+    console.log('Saving value', form.elements.playerName.value)
+    if (this.gameState === 'start') {
+      this.gameState = 'question'
+      this.getQuestion()
+    }
+  }
+
+  async getQuestion () {
+    let response = await window.fetch(this.apiURL)
+    this.response = await response.json()
+    this.apiURL = this.response.nextURL
+    this._updateRendering()
+    this.startTimer()
   }
 
   async sendAnswer () {
@@ -168,18 +191,6 @@ class QuizGame extends window.HTMLElement {
     this.totalTime += this.timer
     console.log('Total time is: ' + this.totalTime)
     console.log('TIMER STOPPED at: ' + this.timer)
-  }
-
-  // query (selector) {
-  //   return this.shadowRoot.querySelector(selector)
-  // }
-
-  async getQuestion () {
-    let response = await window.fetch(this.apiURL)
-    this.response = await response.json()
-    this.apiURL = this.response.nextURL
-    this._updateRendering()
-    this.startTimer()
   }
 
   getAnswer () {
@@ -246,68 +257,94 @@ class QuizGame extends window.HTMLElement {
   }
 
   _updateRendering () {
-    let startDiv = this.shadowRoot.querySelector('#startDiv')
-    let questionDiv = this.shadowRoot.querySelector('#questionDiv')
-    let answerDiv = this.shadowRoot.querySelector('#answerDiv')
-    let question = this.shadowRoot.querySelector('#question')
-    let serverAnswer = this.shadowRoot.querySelector('#serverAnswer')
-    let customAnswer = this.shadowRoot.querySelector('#customAnswer')
-    let totalTime = this.shadowRoot.querySelector('#totalTime')
-    let div = this.shadowRoot.querySelector('#inputDiv')
-    let buttonGetQuestion = this.shadowRoot.querySelector('#buttonGetQuestion')
-    let buttonRestart = this.shadowRoot.querySelector('#buttonRestart')
-    div.innerHTML = ''
-    customAnswer.textContent = ''
-    totalTime.textContent = ''
-    this.hideElement(startDiv)
-    if (!this.response) {
-      this.hideElement(answerDiv)
-      this.showElement(startDiv)
-    } else if (this.gameOver) {
-      this.hideElement(questionDiv)
-      this.showElement(answerDiv)
-      this.hideElement(buttonGetQuestion)
-      this.showElement(buttonRestart)
-      serverAnswer.textContent = this.response.message
-      customAnswer.textContent = 'GAME OVER!'
-    } else if (!this.apiURL) {
-      this.hideElement(questionDiv)
-      this.showElement(answerDiv)
-      this.hideElement(buttonGetQuestion)
-      this.showElement(buttonRestart)
-      customAnswer.textContent = 'Congratulations! You passed the quiz!'
-      totalTime.textContent = `Your Total Time: ${this.totalTime / 1000} seconds`
-      this.populateStorage()
-    } else if (!this.response.question) {
-      this.hideElement(questionDiv)
-      this.hideElement(buttonRestart)
-      this.showElement(buttonGetQuestion)
-      this.showElement(answerDiv)
-      serverAnswer.textContent = this.response.message
-    } else if (this.response.question && !this.response.alternatives) {
-      this.hideElement(answerDiv)
-      this.showElement(questionDiv)
-      question.textContent = this.response.question
-      let input = document.createElement('input')
-      input.setAttribute('type', 'text')
-      input.setAttribute('id', 'inputText')
-      div.appendChild(input)
-    } else if (this.response.alternatives) {
-      this.hideElement(answerDiv)
-      this.showElement(questionDiv)
-      question.textContent = this.response.question
-      Object.keys(this.response.alternatives).forEach((key) => {
-        let label = document.createElement('label')
-        let radioButton = document.createElement('input')
-        let text = document.createTextNode(this.response.alternatives[key])
-        radioButton.setAttribute('name', 'alt')
-        radioButton.setAttribute('type', 'radio')
-        radioButton.setAttribute('value', key)
-        label.appendChild(radioButton)
-        label.appendChild(text)
-        div.appendChild(label)
-      })
+    const $ = (selector, context = this.shadowRoot) => context.querySelector(selector)
+    this.hideElement($('#startDiv'))
+    this.hideElement($('#questionDiv'))
+    this.hideElement($('#answerDiv'))
+    this.hideElement($('#inputAnswer'))
+    $('#inputName').required = false
+
+    if (this.gameState === 'start') {
+      $('#inputName').required = true
+      console.log($('#inputName').name)
+      this.showElement($('#startDiv'))
+      $('#inputName').focus()
     }
+
+    if (this.gameState === 'question') {
+      $('#question').textContent = this.response.question
+      this.showElement($('#questionDiv'))
+      $('button').textContent = 'Submit Answer!'
+      if (this.response.question && !this.response.alternatives) {
+        $('#inputAnswer').required = true
+        this.showElement($('#inputAnswer'))
+        $('#inputAnswer').focus()
+      }
+    }
+    // else if ()
+
+    // let startDiv = this.shadowRoot.querySelector('#startDiv')
+    // let questionDiv = this.shadowRoot.querySelector('#questionDiv')
+    // let answerDiv = this.shadowRoot.querySelector('#answerDiv')
+    // let question = this.shadowRoot.querySelector('#question')
+    // let serverAnswer = this.shadowRoot.querySelector('#serverAnswer')
+    // let customAnswer = this.shadowRoot.querySelector('#customAnswer')
+    // let totalTime = this.shadowRoot.querySelector('#totalTime')
+    // let div = this.shadowRoot.querySelector('#inputDiv')
+    // let buttonGetQuestion = this.shadowRoot.querySelector('#buttonGetQuestion')
+    // let buttonRestart = this.shadowRoot.querySelector('#buttonRestart')
+    // div.innerHTML = ''
+    // customAnswer.textContent = ''
+    // totalTime.textContent = ''
+    // this.hideElement(startDiv)
+    // if (!this.response) {
+    //   this.hideElement(answerDiv)
+    //   this.showElement(startDiv)
+    // } else if (this.gameOver) {
+    //   this.hideElement(questionDiv)
+    //   this.showElement(answerDiv)
+    //   this.hideElement(buttonGetQuestion)
+    //   this.showElement(buttonRestart)
+    //   serverAnswer.textContent = this.response.message
+    //   customAnswer.textContent = 'GAME OVER!'
+    // } else if (!this.apiURL) {
+    //   this.hideElement(questionDiv)
+    //   this.showElement(answerDiv)
+    //   this.hideElement(buttonGetQuestion)
+    //   this.showElement(buttonRestart)
+    //   customAnswer.textContent = 'Congratulations! You passed the quiz!'
+    //   totalTime.textContent = `Your Total Time: ${this.totalTime / 1000} seconds`
+    //   this.populateStorage()
+    // } else if (!this.response.question) {
+    //   this.hideElement(questionDiv)
+    //   this.hideElement(buttonRestart)
+    //   this.showElement(buttonGetQuestion)
+    //   this.showElement(answerDiv)
+    //   serverAnswer.textContent = this.response.message
+    // } else if (this.response.question && !this.response.alternatives) {
+    //   this.hideElement(answerDiv)
+    //   this.showElement(questionDiv)
+    //   question.textContent = this.response.question
+    //   let input = document.createElement('input')
+    //   input.setAttribute('type', 'text')
+    //   input.setAttribute('id', 'inputText')
+    //   div.appendChild(input)
+    // } else if (this.response.alternatives) {
+    //   this.hideElement(answerDiv)
+    //   this.showElement(questionDiv)
+    //   question.textContent = this.response.question
+    //   Object.keys(this.response.alternatives).forEach((key) => {
+    //     let label = document.createElement('label')
+    //     let radioButton = document.createElement('input')
+    //     let text = document.createTextNode(this.response.alternatives[key])
+    //     radioButton.setAttribute('name', 'alt')
+    //     radioButton.setAttribute('type', 'radio')
+    //     radioButton.setAttribute('value', key)
+    //     label.appendChild(radioButton)
+    //     label.appendChild(text)
+    //     div.appendChild(label)
+    //   })
+    // }
   }
 }
 
