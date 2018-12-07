@@ -8,7 +8,8 @@ template.innerHTML = /* html */`
 <input type="text" name="playerName" id="inputName" autocomplete="off" placeholder="Your cool nickname here...">
 </div>
 <div id="questionDiv" class="hidden">
-<h4>Timer: <span id="timer"></span></h4>
+<p id="timerLabel">Timer: <span id="timer"></span></p>
+<h4>Question:</h4>
 <h3 id="question"></h3>
 <h4>Your answer:</h4>
 <input type='text' name="textAnswer" id='inputAnswer' class="hidden" autocomplete="off" placeholder="Type your answer here...">

@@ -9,6 +9,7 @@
     font-size: 100%;
     color: #313638;
     line-height: 1.5;
+    word-break: break-all;
 }
 
 :host([hidden]) {
@@ -40,6 +41,10 @@ select {
     border: 1px solid #ccc;
     border-radius: 4px;
     box-sizing: border-box;
+}
+
+#radioButtons label {
+    margin-left: 40%;
 }
 
 input[type=radio] {
@@ -87,4 +92,15 @@ th {
 
 td:nth-child(1) {
     color: #FF6B6B;
+}
+
+#timerLabel {
+    width: 50%;
+    font-family: monospace;
+    font-size: 1.5em;
+    text-align: center;
+    padding: 1em;
+    margin: 5px auto;
+    border: 1px solid #FF6B6B;
+    background-color: #ffe8e8;
 }
