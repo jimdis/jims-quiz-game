@@ -1,3 +1,5 @@
+import API from './api.js'
+
 const template = document.createElement('template')
 
 template.innerHTML = /* html */`
@@ -54,81 +56,57 @@ class QuizGame extends window.HTMLElement {
   }
 
   connectedCallback () {
+    this.api = new API()
     this.totalTime = 0
-    this.apiURL = 'http://vhost3.lnu.se:20080/question/1'
-    this.response = null
     this.gameState = 'start'
-
-    let form = this.shadowRoot.querySelector('form')
-    form.querySelector('button').textContent = 'Start Game!'
-    form.addEventListener('submit', event => {
-      this.buttonClicked(form)
-      event.preventDefault()
-    })
-
+    this.form = this.shadowRoot.querySelector('form')
+    this.form.querySelector('button').textContent = 'Start Game!'
+    // save reference so the event listener can be removed
+    this.boundButtonClicked = this.buttonClicked.bind(this)
+    this.form.addEventListener('submit', this.boundButtonClicked)
     this._updateRendering()
   }
 
   disconnectedCallback () {
     this.setTimer('stop')
-    this.shadowRoot.querySelector('form').removeEventListener('submit')
+    this.form.removeEventListener('submit', this.boundButtonClicked)
+    this.api = null
   }
 
-  buttonClicked (form) {
+  async buttonClicked (event) {
+    event.preventDefault()
     if (this.gameState === 'start') {
       this.gameState = 'question'
-      this.playerName = form.playerName.value
-      this.getQuestion()
+      this.playerName = this.form.playerName.value
+      this.question = await this.api.getQuestion()
+      this._updateRendering()
+      this.setTimer('start')
     } else if (this.gameState === 'question') {
-      this.gameState = 'answer'
-      this.sendAnswer(form)
+      this.setTimer('stop')
+      let answer = this.form.inputAnswer.value ? this.form.inputAnswer.value.toUpperCase().trim()
+        : this.form.alt.value
+      this.response = await this.api.sendAnswer(answer)
+      if (this.api.wrongAnswer) {
+        this.gameState = 'gameOver'
+        this._updateRendering()
+      } else if (this.api.gameFinished) {
+        this.gameState = 'gameFinished'
+        this.populateStorage()
+        this._updateRendering()
+      } else this.gameState = 'answer'
+      this._updateRendering()
     } else if (this.gameState === 'answer') {
       this.gameState = 'question'
-      this.getQuestion()
+      this.question = await this.api.getQuestion()
+      this._updateRendering()
+      this.setTimer('start')
     } else if (this.gameState === 'gameOver' || this.gameState === 'gameFinished') {
       this.disconnectedCallback()
       this.connectedCallback()
     }
   }
 
-  async getQuestion () {
-    let response = await window.fetch(this.apiURL)
-    this.response = await response.json()
-    this.apiURL = this.response.nextURL
-    this._updateRendering()
-    this.setTimer('start')
-  }
-
-  async sendAnswer (form) {
-    this.setTimer('stop')
-    let answer = form.inputAnswer.value ? form.inputAnswer.value.toUpperCase().trim()
-      : form.alt.value
-    this.response = await this.postData(this.apiURL, { answer: answer })
-    if (!this.response.nextURL && this.gameState !== 'gameOver') {
-      this.apiURL = null
-      this.gameState = 'gameFinished'
-      this.populateStorage()
-    } else {
-      this.apiURL = this.response.nextURL
-    }
-    this._updateRendering()
-  }
-
-  async postData (url, data) {
-    let response = await window.fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data)
-    })
-    if (response.status === 400) {
-      this.gameState = 'gameOver'
-    }
-    response = await response.json()
-    return response
-  }
-
+  // Self-adjusting timer adapted from https://www.sitepoint.com/creating-accurate-timers-in-javascript/
   setTimer (action) {
     if (action === 'start') {
       this.timer = 0
@@ -137,7 +115,6 @@ class QuizGame extends window.HTMLElement {
       this.shadowRoot.querySelector('#timer').classList.remove('fiveseconds')
       timer.call(this)
     }
-
     function timer () {
       this.timer += 100
       elapsed = Math.floor(200 - (this.timer / 100)) / 10
@@ -160,7 +137,6 @@ class QuizGame extends window.HTMLElement {
     if (action === 'stop') {
       clearTimeout(this.timerID)
       this.totalTime += this.timer
-      console.log('TOTAL TIME IS: ' + this.totalTime)
     }
   }
 
@@ -197,21 +173,22 @@ class QuizGame extends window.HTMLElement {
     $('#inputAnswer').required = false
 
     if (this.gameState === 'start') {
+      $('#inputName').value = null
       $('#inputName').required = true
       showElement('#startDiv')
       $('#inputName').focus()
     }
 
     if (this.gameState === 'question') {
-      $('#question').textContent = this.response.question
+      $('#question').textContent = this.question
+      $('#inputAnswer').value = null
       showElement('#questionDiv')
       $('button').textContent = 'Submit Answer!'
-      if (this.response.alternatives) {
-        $('#inputAnswer').value = null
-        Object.keys(this.response.alternatives).forEach((key) => {
+      if (this.api.alternatives) {
+        Object.keys(this.api.alternatives).forEach((key) => {
           let label = document.createElement('label')
           let radioButton = document.createElement('input')
-          let text = document.createTextNode(this.response.alternatives[key])
+          let text = document.createTextNode(this.api.alternatives[key])
           radioButton.name = 'alt'
           radioButton.type = 'radio'
           radioButton.value = key
@@ -230,7 +207,9 @@ class QuizGame extends window.HTMLElement {
     }
 
     if (this.gameState === 'answer') {
-      $('#serverAnswer').textContent = this.response.message
+      $('#customAnswer').textContent = null
+      $('#totalTime').textContent = null
+      $('#serverAnswer').textContent = this.response
       showElement('#answerDiv')
       $('button').textContent = 'Next Question!'
       $('button').focus()
@@ -241,7 +220,7 @@ class QuizGame extends window.HTMLElement {
         $('#serverAnswer').textContent = null
         $('#customAnswer').textContent = 'Time is out! GAME OVER!'
       } else {
-        $('#serverAnswer').textContent = this.response.message
+        $('#serverAnswer').textContent = this.response
         $('#customAnswer').textContent = 'GAME OVER!'
       }
       showElement('#answerDiv')
@@ -250,10 +229,10 @@ class QuizGame extends window.HTMLElement {
     }
 
     if (this.gameState === 'gameFinished') {
-      console.log('TOTAL TIME IN RENDER: ' + this.totalTime)
-      $('#serverAnswer').textContent = this.response.message
+      $('#serverAnswer').textContent = this.response
       $('#customAnswer').textContent = 'Congratulations! You passed the quiz!'
       $('#totalTime').textContent = `Your total time was ${this.totalTime / 1000} seconds`
+      $('#highScoreTable tbody').textContent = null
       showElement('#answerDiv')
       showElement('#highScoreDiv')
       let highScores = this.getHighScores()
@@ -268,6 +247,7 @@ class QuizGame extends window.HTMLElement {
         $('#highScoreTable tbody').appendChild(tr)
       }
       $('button').textContent = 'Play Again!'
+      $('button').focus()
     }
   }
 }
