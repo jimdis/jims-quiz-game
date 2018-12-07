@@ -1,0 +1,18 @@
+body {
+    width: 70%;
+    margin: 0 auto;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+h1 {
+    color: grey;
+}
+
+p {
+    font-size: 1.25em;
+}
+
+.small {
+    font-size: 1em;
+    color: grey;
+}

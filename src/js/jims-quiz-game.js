@@ -101,7 +101,8 @@ class QuizGame extends window.HTMLElement {
 
   async sendAnswer (form) {
     this.setTimer('stop')
-    let answer = form.inputAnswer.value ? form.inputAnswer.value : form.alt.value
+    let answer = form.inputAnswer.value ? form.inputAnswer.value.toUpperCase().trim()
+      : form.alt.value
     this.response = await this.postData(this.apiURL, { answer: answer })
     if (!this.response.nextURL && this.gameState !== 'gameOver') {
       this.apiURL = null
@@ -133,6 +134,7 @@ class QuizGame extends window.HTMLElement {
       this.timer = 0
       var start = new Date().getTime()
       var elapsed = '20.0'
+      this.shadowRoot.querySelector('#timer').classList.remove('fiveseconds')
       timer.call(this)
     }
 
@@ -142,6 +144,9 @@ class QuizGame extends window.HTMLElement {
       if (Math.round(elapsed) === elapsed) { elapsed += '.0' }
       let diff = (new Date().getTime() - start) - this.timer
       this.shadowRoot.querySelector('#timer').textContent = elapsed
+      if (elapsed === '5.0') {
+        this.shadowRoot.querySelector('#timer').classList.add('fiveseconds')
+      }
       if (elapsed === '0.0') {
         this.setTimer('stop')
         this.gameState = 'gameOver'
@@ -155,6 +160,7 @@ class QuizGame extends window.HTMLElement {
     if (action === 'stop') {
       clearTimeout(this.timerID)
       this.totalTime += this.timer
+      console.log('TOTAL TIME IS: ' + this.totalTime)
     }
   }
 
@@ -215,6 +221,7 @@ class QuizGame extends window.HTMLElement {
           $('#radioButtons').appendChild(label)
           showElement('#radioButtons')
         })
+        $('#radioButtons input').focus()
       } else {
         $('#inputAnswer').required = true
         showElement('#inputAnswer')
@@ -239,9 +246,11 @@ class QuizGame extends window.HTMLElement {
       }
       showElement('#answerDiv')
       $('button').textContent = 'Play Again!'
+      $('button').focus()
     }
 
     if (this.gameState === 'gameFinished') {
+      console.log('TOTAL TIME IN RENDER: ' + this.totalTime)
       $('#serverAnswer').textContent = this.response.message
       $('#customAnswer').textContent = 'Congratulations! You passed the quiz!'
       $('#totalTime').textContent = `Your total time was ${this.totalTime / 1000} seconds`
@@ -253,7 +262,7 @@ class QuizGame extends window.HTMLElement {
         let tdName = document.createElement('td')
         let tdScore = document.createElement('td')
         tdName.textContent = player[0]
-        tdScore.textContent = `${Math.floor(player[1] / 100) / 10} seconds`
+        tdScore.textContent = `${player[1] / 1000} seconds`
         tr.appendChild(tdName)
         tr.appendChild(tdScore)
         $('#highScoreTable tbody').appendChild(tr)
