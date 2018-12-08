@@ -97,7 +97,9 @@ class QuizGame extends window.HTMLElement {
       this.setTimer('start')
     } else if (this.gameState === 'question') {
       this.setTimer('stop')
-      let answer = this.api.alternatives ? this.form.alt.value
+      console.log(this.shadowRoot.querySelector('input[name="alt"]:checked'))
+      let answer = this.api.alternatives
+        ? this.shadowRoot.querySelector('input[name="alt"]:checked').value
         : this.form.inputAnswer.value.toUpperCase().trim()
       this.form.reset()
       this.response = await this.api.sendAnswer(answer)
