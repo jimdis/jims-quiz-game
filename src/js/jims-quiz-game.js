@@ -5,38 +5,50 @@ const template = document.createElement('template')
 template.innerHTML = /* html */`
 <link rel="stylesheet" href="../css/jims-quiz-game.css">
 <form action="">
-<div id="startDiv" class="hidden">
-<h4>Please enter a nickname:</h4>
-<input type="text" name="playerName" id="inputName" autocomplete="off" placeholder="Your cool nickname here...">
-</div>
-<div id="questionDiv" class="hidden">
-<p id="timerLabel">Timer: <span id="timer"></span></p>
-<h4>Question:</h4>
-<h3 id="question"></h3>
-<h4>Your answer:</h4>
-<input type='text' name="textAnswer" id='inputAnswer' class="hidden" autocomplete="off" placeholder="Type your answer here...">
-<div id="radioButtons">
-</div>
-</div>
-<div id="answerDiv" class="hidden">
-<h3 id="serverAnswer"></h3>
-<h4 id="customAnswer"></h4>
-<h4 id="totalTime"></h4>
-</div>
-<div id="highScoreDiv">
-<h3>High Score</h3>
-<table id="highScoreTable">
-<head>
-<tr>
-<th>Name</th>
-<th>Time</th>
-</tr>
-</head>
-<tbody>
-</tbody>
-</table>
-</div>
-<button id="formButton" type="submit">BOILERPLATE</button>
+    <div id="startDiv">
+        <h4>Please enter a nickname:</h4>
+        <input type="text" name="playerName" id="inputName" autocomplete="off" placeholder="Your cool nickname here...">
+    </div>
+    <div id="questionDiv">
+        <p id="timerLabel">Timer: <span id="timer"></span></p>
+        <h4>Question:</h4>
+        <h3 id="question"></h3>
+        <h4>Your answer:</h4>
+    </div>
+    <div id="inputText">
+      <input type="text" name="textAnswer" id="inputAnswer" autocomplete="off" placeholder="Type your answer here...">
+    </div>
+    <div id="inputRadio">
+        <div id="radioButtons">
+        </div>
+    </div>
+    <div id="answerDiv">
+        <h3 id="serverAnswer"></h3>
+    </div>
+    <div id="gameOver">
+        <h4>GAME OVER!</h4>
+    </div>
+    <div id="gameFinished">
+        <h4>Congratulations! You passed the quiz!</h4>
+        <h4 id="totalTime"></h4>
+        <h3>High Score</h3>
+        <table id="highScoreTable">
+
+            <head>
+                <tr>
+                    <th>Name</th>
+                    <th>Time</th>
+                </tr>
+            </head>
+            <tbody>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="timeOut">
+        <h4>Time is out! Game Over!</h4>
+    </div>
+    <button id="formButton" type="submit">BOILERPLATE</button>
 </form>
 `
 
@@ -75,6 +87,8 @@ class QuizGame extends window.HTMLElement {
 
   async buttonClicked (event) {
     event.preventDefault()
+    // this.totalTime = 10000
+    // this.populateStorage()
     if (this.gameState === 'start') {
       this.gameState = 'question'
       this.playerName = this.form.playerName.value
@@ -83,8 +97,9 @@ class QuizGame extends window.HTMLElement {
       this.setTimer('start')
     } else if (this.gameState === 'question') {
       this.setTimer('stop')
-      let answer = this.form.inputAnswer.value ? this.form.inputAnswer.value.toUpperCase().trim()
-        : this.form.alt.value
+      let answer = this.api.alternatives ? this.form.alt.value
+        : this.form.inputAnswer.value.toUpperCase().trim()
+      this.form.reset()
       this.response = await this.api.sendAnswer(answer)
       if (this.api.wrongAnswer) {
         this.gameState = 'gameOver'
@@ -141,12 +156,16 @@ class QuizGame extends window.HTMLElement {
   }
 
   populateStorage () {
-    let highScores = this.getHighScores()
-    let worstHighScore = highScores[4][1]
-    let worstPlayer = highScores[4][0]
-    if (this.totalTime < worstHighScore) {
+    if (window.localStorage.length < 5) {
       window.localStorage.setItem(this.playerName, this.totalTime)
-      window.localStorage.removeItem(worstPlayer)
+    } else {
+      let highScores = this.getHighScores()
+      let worstHighScore = highScores[4][1]
+      let worstPlayer = highScores[4][0]
+      if (this.totalTime < worstHighScore) {
+        window.localStorage.setItem(this.playerName, this.totalTime)
+        window.localStorage.removeItem(worstPlayer)
+      }
     }
   }
 
@@ -161,19 +180,16 @@ class QuizGame extends window.HTMLElement {
 
   _updateRendering () {
     const $ = (selector, context = this.shadowRoot) => context.querySelector(selector)
-    const hideElement = (selector) => $(selector).classList.add('hidden')
     const showElement = (selector) => $(selector).classList.remove('hidden')
-    hideElement('#startDiv')
-    hideElement('#questionDiv')
-    hideElement('#answerDiv')
-    hideElement('#inputAnswer')
-    hideElement('#highScoreDiv')
+    let divs = this.shadowRoot.querySelectorAll('form div')
+    for (let div of divs) {
+      div.classList.add('hidden')
+    }
     $('#radioButtons').textContent = null
     $('#inputName').required = false
     $('#inputAnswer').required = false
 
     if (this.gameState === 'start') {
-      $('#inputName').value = null
       $('#inputName').required = true
       showElement('#startDiv')
       $('#inputName').focus()
@@ -181,7 +197,6 @@ class QuizGame extends window.HTMLElement {
 
     if (this.gameState === 'question') {
       $('#question').textContent = this.question
-      $('#inputAnswer').value = null
       showElement('#questionDiv')
       $('button').textContent = 'Submit Answer!'
       if (this.api.alternatives) {
@@ -197,18 +212,17 @@ class QuizGame extends window.HTMLElement {
           label.appendChild(text)
           $('#radioButtons').appendChild(label)
           showElement('#radioButtons')
+          showElement('#inputRadio')
         })
         $('#radioButtons input').focus()
       } else {
         $('#inputAnswer').required = true
-        showElement('#inputAnswer')
+        showElement('#inputText')
         $('#inputAnswer').focus()
       }
     }
 
     if (this.gameState === 'answer') {
-      $('#customAnswer').textContent = null
-      $('#totalTime').textContent = null
       $('#serverAnswer').textContent = this.response
       showElement('#answerDiv')
       $('button').textContent = 'Next Question!'
@@ -217,24 +231,20 @@ class QuizGame extends window.HTMLElement {
 
     if (this.gameState === 'gameOver') {
       if (this.timeOut) {
-        $('#serverAnswer').textContent = null
-        $('#customAnswer').textContent = 'Time is out! GAME OVER!'
+        showElement('#timeOut')
       } else {
         $('#serverAnswer').textContent = this.response
-        $('#customAnswer').textContent = 'GAME OVER!'
+        showElement('#answerDiv')
+        showElement('#gameOver')
       }
-      showElement('#answerDiv')
       $('button').textContent = 'Play Again!'
       $('button').focus()
     }
 
     if (this.gameState === 'gameFinished') {
       $('#serverAnswer').textContent = this.response
-      $('#customAnswer').textContent = 'Congratulations! You passed the quiz!'
       $('#totalTime').textContent = `Your total time was ${this.totalTime / 1000} seconds`
       $('#highScoreTable tbody').textContent = null
-      showElement('#answerDiv')
-      showElement('#highScoreDiv')
       let highScores = this.getHighScores()
       for (let player of highScores) {
         let tr = document.createElement('tr')
@@ -246,6 +256,8 @@ class QuizGame extends window.HTMLElement {
         tr.appendChild(tdScore)
         $('#highScoreTable tbody').appendChild(tr)
       }
+      showElement('#answerDiv')
+      showElement('#gameFinished')
       $('button').textContent = 'Play Again!'
       $('button').focus()
     }
