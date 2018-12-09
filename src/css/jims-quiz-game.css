@@ -96,8 +96,12 @@ th {
     color: #fff;
 }
 
-td:nth-child(1) {
+td:nth-child(3) {
     color: #FF6B6B;
+}
+
+tr:nth-child(even) {
+    background-color: #ffe8e8;
 }
 
 #timerLabel {

@@ -32,15 +32,14 @@ template.innerHTML = /* html */`
         <h4>Congratulations! You passed the quiz!</h4>
         <h4 id="totalTime"></h4>
         <h3>High Score</h3>
-        <table id="highScoreTable">
-
-            <head>
+        <table>
                 <tr>
+                    <th>Place</th>
+                    <th>Date</th>
                     <th>Name</th>
                     <th>Time</th>
                 </tr>
-            </head>
-            <tbody>
+            <tbody  id="highScoreTable">
             </tbody>
         </table>
     </div>
@@ -87,8 +86,6 @@ class QuizGame extends window.HTMLElement {
 
   async buttonClicked (event) {
     event.preventDefault()
-    // this.totalTime = 10000
-    // this.populateStorage()
     if (this.gameState === 'start') {
       this.gameState = 'question'
       this.playerName = this.form.playerName.value
@@ -158,14 +155,23 @@ class QuizGame extends window.HTMLElement {
   }
 
   populateStorage () {
-    if (window.localStorage.length < 5) {
-      window.localStorage.setItem(this.playerName, this.totalTime)
+    let date = new Date().toISOString().substring(0, 10)
+    let key = `jqg-${new Date().valueOf()}`
+    let value = {
+      'key': key,
+      'name': this.playerName,
+      'time': this.totalTime,
+      'date': date
+    }
+    let highScores = this.getHighScores()
+
+    if (highScores.length < 5) {
+      window.localStorage.setItem(key, JSON.stringify(value))
     } else {
-      let highScores = this.getHighScores()
-      let worstHighScore = highScores[4][1]
-      let worstPlayer = highScores[4][0]
+      let worstHighScore = highScores[4].time
+      let worstPlayer = highScores[4].key
       if (this.totalTime < worstHighScore) {
-        window.localStorage.setItem(this.playerName, this.totalTime)
+        window.localStorage.setItem(key, JSON.stringify(value))
         window.localStorage.removeItem(worstPlayer)
       }
     }
@@ -173,10 +179,12 @@ class QuizGame extends window.HTMLElement {
 
   getHighScores () {
     let arr = []
-    Object.keys(window.localStorage).forEach((key) => {
-      arr.push([key, parseInt(window.localStorage.getItem(key), 10)])
+    let keys = Object.keys(window.localStorage).filter(key => key.substr(0, 4) === 'jqg-')
+    keys.forEach((key) => {
+      arr.push(JSON.parse(window.localStorage.getItem(key)))
     })
-    arr.sort((a, b) => a[1] - b[1])
+    arr.sort((a, b) => a.time - b.time)
+    console.log(arr)
     return arr.slice(0, 5)
   }
 
@@ -246,17 +254,23 @@ class QuizGame extends window.HTMLElement {
     if (this.gameState === 'gameFinished') {
       $('#serverAnswer').textContent = this.response
       $('#totalTime').textContent = `Your total time was ${this.totalTime / 1000} seconds`
-      $('#highScoreTable tbody').textContent = null
+      $('#highScoreTable').textContent = null
       let highScores = this.getHighScores()
       for (let player of highScores) {
         let tr = document.createElement('tr')
+        let tdPlace = document.createElement('td')
+        let tdDate = document.createElement('td')
         let tdName = document.createElement('td')
         let tdScore = document.createElement('td')
-        tdName.textContent = player[0]
-        tdScore.textContent = `${player[1] / 1000} seconds`
+        tdPlace.textContent = highScores.indexOf(player) + 1
+        tdName.textContent = player.name
+        tdScore.textContent = `${player.time / 1000} seconds`
+        tdDate.textContent = player.date
+        tr.appendChild(tdPlace)
+        tr.appendChild(tdDate)
         tr.appendChild(tdName)
         tr.appendChild(tdScore)
-        $('#highScoreTable tbody').appendChild(tr)
+        $('#highScoreTable').appendChild(tr)
       }
       showElement('#answerDiv')
       showElement('#gameFinished')
