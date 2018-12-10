@@ -22,7 +22,7 @@ export default /* html */`
         <h3 id="serverAnswer"></h3>
     </div>
     <div id="gameOver">
-        <h4>GAME OVER!</h4>
+        <img src="../image/gameover.gif">
     </div>
     <div id="gameFinished">
         <h4>Congratulations! You passed the quiz!</h4>
@@ -43,7 +43,8 @@ export default /* html */`
     </div>
 
     <div id="timeOut">
-        <h4>Time is out! Game Over!</h4>
+        <h4>Time is out!</h4>
+        <img src="../image/gameover.gif">
     </div>
     <div id="error">
     <h4 id="errorMessage"></h4>

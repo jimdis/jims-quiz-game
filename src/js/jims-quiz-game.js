@@ -60,10 +60,12 @@ class QuizGame extends window.HTMLElement {
    */
   async _buttonClicked (event) {
     event.preventDefault()
+    // Start of game after user inputs name
     if (this.gameState === 'start') {
       this.playerName = this.form.playerName.value
       this.gameState = 'answer'
     }
+    // User is presented question and prompted for an answer
     if (this.gameState === 'answer') {
       this.question = await this.api.getQuestion()
         .catch((error) => { this.errorMessage = error })
@@ -77,6 +79,7 @@ class QuizGame extends window.HTMLElement {
         this._updateRendering()
         this._setTimer('start')
       }
+    // User has answered question
     } else if (this.gameState === 'question') {
       this._setTimer('stop')
       let answer = this.api.alternatives
@@ -85,6 +88,7 @@ class QuizGame extends window.HTMLElement {
       this.form.reset()
       this.response = await this.api.sendAnswer(answer)
         .catch((error) => { this.errorMessage = error })
+      // Checks if error, wrong answer or final questions
       if (this.errorMessage) {
         this.gameState = 'error'
         this._updateRendering()
@@ -103,6 +107,7 @@ class QuizGame extends window.HTMLElement {
         this.gameState = 'answer'
         this._updateRendering()
       }
+    // User has chosen to restart game
     } else if (this.gameState === 'restart') {
       this.disconnectedCallback()
       this.connectedCallback()
@@ -200,18 +205,23 @@ class QuizGame extends window.HTMLElement {
    * @memberof QuizGame
    */
   _updateRendering () {
+    // Making it easier to select and show elements
     const $ = (selector) => this.shadowRoot.querySelector(selector)
     const showElement = (selector) => $(selector).classList.remove('hidden')
-    const divs = this.shadowRoot.querySelectorAll('form div')
+    // Hides all div elements
+    let divs = this.shadowRoot.querySelectorAll('form div')
     divs.forEach(div => div.classList.add('hidden'))
+    // Housekeeping
     $('#radioButtons').textContent = null
     $('#inputName').required = false
     $('#inputAnswer').required = false
+    // Start of game: User is prompted for name
     if (this.gameState === 'start') {
       $('#inputName').required = true
       showElement('#startDiv')
       $('#inputName').focus()
     }
+    // User is presented with question and prompted for answer
     if (this.gameState === 'question') {
       $('#question').textContent = this.question
       showElement('#questionDiv')
@@ -238,12 +248,14 @@ class QuizGame extends window.HTMLElement {
         $('#inputAnswer').focus()
       }
     }
+    // User is presented with response message from server after having sent answer
     if (this.gameState === 'answer') {
       $('#serverAnswer').textContent = this.response
       showElement('#answerDiv')
       $('button').textContent = 'Next Question!'
       $('button').focus()
     }
+    // User is presented with game over and prompted to play again.
     if (this.gameState === 'gameOver') {
       if (this.timeOut) {
         showElement('#timeOut')
@@ -255,6 +267,7 @@ class QuizGame extends window.HTMLElement {
       $('button').textContent = 'Play Again!'
       $('button').focus()
     }
+    // User is presented with game finished and highscores and prompted to play again.
     if (this.gameState === 'gameFinished') {
       $('#serverAnswer').textContent = this.response
       $('#totalTime').textContent = `Your total time was ${this.totalTime / 1000} seconds`
@@ -274,6 +287,7 @@ class QuizGame extends window.HTMLElement {
         tr.appendChild(tdDate)
         tr.appendChild(tdName)
         tr.appendChild(tdScore)
+        // Highligts player name if in highscore list
         if (player.name === this.playerName && player.time === this.totalTime) {
           tr.id = 'highlight'
         }
@@ -284,6 +298,7 @@ class QuizGame extends window.HTMLElement {
       $('button').textContent = 'Play Again!'
       $('button').focus()
     }
+    // User is presented with error message and prompted to try again
     if (this.gameState === 'error') {
       showElement('#error')
       $('#errorMessage').textContent = this.errorMessage

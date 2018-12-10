@@ -131,6 +131,12 @@ tr:nth-child(even) {
     animation: blink 1s linear infinite;
 }
 
+img {
+    display: block;
+    width: 70%;
+    margin: 10px auto;
+}
+
 @keyframes blink {
     0% {
         opacity: 0;
