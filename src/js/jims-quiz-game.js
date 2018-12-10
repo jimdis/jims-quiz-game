@@ -84,21 +84,28 @@ class QuizGame extends window.HTMLElement {
   disconnectedCallback () {
     this.setTimer('stop')
     this.form.removeEventListener('submit', this.boundButtonClicked)
-    this.api = null
+    this.api = null // Garbage collection
+    this.errorMessage = null
   }
 
   async buttonClicked (event) {
     event.preventDefault()
     if (this.gameState === 'start') {
-      this.gameState = 'question'
       this.playerName = this.form.playerName.value
+      this.gameState = 'answer'
+    }
+    if (this.gameState === 'answer') {
       this.question = await this.api.getQuestion()
-        .catch((error) => {
-          this.gameState = 'error'
-          this.error = error
-        })
-      this._updateRendering()
-      this.setTimer('start')
+        .catch((error) => { this.errorMessage = error })
+      if (this.errorMessage) {
+        this.gameState = 'error'
+        this._updateRendering()
+        this.gameState = 'restart'
+      } else {
+        this.gameState = 'question'
+        this._updateRendering()
+        this.setTimer('start')
+      }
     } else if (this.gameState === 'question') {
       this.setTimer('stop')
       let answer = this.api.alternatives
@@ -106,33 +113,35 @@ class QuizGame extends window.HTMLElement {
         : this.form.inputAnswer.value.toUpperCase().trim()
       this.form.reset()
       this.response = await this.api.sendAnswer(answer)
-        .catch((error) => {
-          this.gameState = 'error'
-          this.error = error
-          this._updateRendering()
-        })
-      if (this.api.wrongAnswer) {
+        .catch((error) => { this.errorMessage = error })
+      if (this.errorMessage) {
+        this.gameState = 'error'
+        this._updateRendering()
+        this.gameState = 'restart'
+      } else if (this.api.wrongAnswer) {
         this.gameState = 'gameOver'
         this._updateRendering()
+        this.gameState = 'restart'
       } else if (this.api.gameFinished) {
         this.gameState = 'gameFinished'
         this.populateStorage()
         this._updateRendering()
-      } else if (this.gameState !== 'error') {
+        this.gameState = 'restart'
+      } else {
         this.gameState = 'answer'
         this._updateRendering()
       }
-    } else if (this.gameState === 'answer') {
-      this.gameState = 'question'
-      this.question = await this.api.getQuestion()
-      this._updateRendering()
-      this.setTimer('start')
-    } else if (this.gameState === 'gameOver' || this.gameState === 'gameFinished' || this.gameState === 'error') {
+    } else if (this.gameState === 'restart') {
       this.disconnectedCallback()
       this.connectedCallback()
     }
   }
 
+  error (error) {
+    this.gameState = 'error'
+    this.errorMessage = error
+    this._updateRendering()
+  }
   // Self-adjusting timer adapted from https://www.sitepoint.com/creating-accurate-timers-in-javascript/
   setTimer (action) {
     if (action === 'start') {
@@ -292,7 +301,7 @@ class QuizGame extends window.HTMLElement {
 
     if (this.gameState === 'error') {
       showElement('#error')
-      $('#errorMessage').textContent = this.error
+      $('#errorMessage').textContent = this.errorMessage
       $('button').textContent = 'Try Again?'
       $('button').focus()
     }
