@@ -47,6 +47,9 @@ template.innerHTML = /* html */`
     <div id="timeOut">
         <h4>Time is out! Game Over!</h4>
     </div>
+    <div id="error">
+    <h4 id="errorMessage"></h4>
+    </div>
     <button id="formButton" type="submit">BOILERPLATE</button>
 </form>
 `
@@ -90,16 +93,24 @@ class QuizGame extends window.HTMLElement {
       this.gameState = 'question'
       this.playerName = this.form.playerName.value
       this.question = await this.api.getQuestion()
+        .catch((error) => {
+          this.gameState = 'error'
+          this.error = error
+        })
       this._updateRendering()
       this.setTimer('start')
     } else if (this.gameState === 'question') {
       this.setTimer('stop')
-      console.log(this.shadowRoot.querySelector('input[name="alt"]:checked'))
       let answer = this.api.alternatives
         ? this.shadowRoot.querySelector('input[name="alt"]:checked').value
         : this.form.inputAnswer.value.toUpperCase().trim()
       this.form.reset()
       this.response = await this.api.sendAnswer(answer)
+        .catch((error) => {
+          this.gameState = 'error'
+          this.error = error
+          this._updateRendering()
+        })
       if (this.api.wrongAnswer) {
         this.gameState = 'gameOver'
         this._updateRendering()
@@ -107,14 +118,16 @@ class QuizGame extends window.HTMLElement {
         this.gameState = 'gameFinished'
         this.populateStorage()
         this._updateRendering()
-      } else this.gameState = 'answer'
-      this._updateRendering()
+      } else if (this.gameState !== 'error') {
+        this.gameState = 'answer'
+        this._updateRendering()
+      }
     } else if (this.gameState === 'answer') {
       this.gameState = 'question'
       this.question = await this.api.getQuestion()
       this._updateRendering()
       this.setTimer('start')
-    } else if (this.gameState === 'gameOver' || this.gameState === 'gameFinished') {
+    } else if (this.gameState === 'gameOver' || this.gameState === 'gameFinished' || this.gameState === 'error') {
       this.disconnectedCallback()
       this.connectedCallback()
     }
@@ -184,7 +197,6 @@ class QuizGame extends window.HTMLElement {
       arr.push(JSON.parse(window.localStorage.getItem(key)))
     })
     arr.sort((a, b) => a.time - b.time)
-    console.log(arr)
     return arr.slice(0, 5)
   }
 
@@ -275,6 +287,13 @@ class QuizGame extends window.HTMLElement {
       showElement('#answerDiv')
       showElement('#gameFinished')
       $('button').textContent = 'Play Again!'
+      $('button').focus()
+    }
+
+    if (this.gameState === 'error') {
+      showElement('#error')
+      $('#errorMessage').textContent = this.error
+      $('button').textContent = 'Try Again?'
       $('button').focus()
     }
   }
