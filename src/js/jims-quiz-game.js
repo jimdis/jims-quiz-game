@@ -60,25 +60,23 @@ class QuizGame extends window.HTMLElement {
    */
   async _buttonClicked (event) {
     event.preventDefault()
-    function error (e) {
-      console.log(this)
-      this.errorMessage = e
-      this.gameState = 'error'
-      this._updateRendering()
-      this.gameState = 'restart'
-      this.errorMessage = null
-      this._buttonClicked()
-    }
     if (this.gameState === 'start') {
       this.playerName = this.form.playerName.value
       this.gameState = 'answer'
     }
     if (this.gameState === 'answer') {
       this.question = await this.api.getQuestion()
-        .catch((e) => { error(e).bind(this) })
-      this.gameState = 'question'
-      this._updateRendering()
-      this._setTimer('start')
+        .catch((error) => { this.errorMessage = error })
+      if (this.errorMessage) {
+        this.gameState = 'error'
+        this._updateRendering()
+        this.gameState = 'restart'
+        this.errorMessage = null
+      } else {
+        this.gameState = 'question'
+        this._updateRendering()
+        this._setTimer('start')
+      }
     } else if (this.gameState === 'question') {
       this._setTimer('stop')
       let answer = this.api.alternatives
@@ -86,8 +84,13 @@ class QuizGame extends window.HTMLElement {
         : this.form.inputAnswer.value.toUpperCase().trim()
       this.form.reset()
       this.response = await this.api.sendAnswer(answer)
-        .catch((e) => { error(e).bind(this) })
-      if (this.api.wrongAnswer) {
+        .catch((error) => { this.errorMessage = error })
+      if (this.errorMessage) {
+        this.gameState = 'error'
+        this._updateRendering()
+        this.gameState = 'restart'
+        this.errorMessage = null
+      } else if (this.api.wrongAnswer) {
         this.gameState = 'gameOver'
         this._updateRendering()
         this.gameState = 'restart'
@@ -105,7 +108,6 @@ class QuizGame extends window.HTMLElement {
       this.connectedCallback()
     }
   }
-
   /**
    * Timer adapted from https://www.sitepoint.com/creating-accurate-timers-in-javascript/
    * Counts down from 20s each question. Total Time for the quiz is stored in this.totalTime
@@ -144,7 +146,6 @@ class QuizGame extends window.HTMLElement {
     if (action === 'stop') {
       clearTimeout(this.timerID)
       this.totalTime += this.timer
-      console.log(this.totalTime)
     }
   }
 
