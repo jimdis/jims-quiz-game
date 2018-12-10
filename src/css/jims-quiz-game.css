@@ -109,6 +109,12 @@ tr:nth-child(even) {
     background-color: #ffe8e8;
 }
 
+#highlight {
+    color: #FF6B6B;
+    font-weight: bold;
+    text-shadow: 2px 2px 10px;
+}
+
 #timerLabel {
     width: 50%;
     font-family: monospace;

@@ -60,23 +60,25 @@ class QuizGame extends window.HTMLElement {
    */
   async _buttonClicked (event) {
     event.preventDefault()
+    function error (e) {
+      console.log(this)
+      this.errorMessage = e
+      this.gameState = 'error'
+      this._updateRendering()
+      this.gameState = 'restart'
+      this.errorMessage = null
+      this._buttonClicked()
+    }
     if (this.gameState === 'start') {
       this.playerName = this.form.playerName.value
       this.gameState = 'answer'
     }
     if (this.gameState === 'answer') {
       this.question = await this.api.getQuestion()
-        .catch((error) => { this.errorMessage = error })
-      if (this.errorMessage) {
-        this.gameState = 'error'
-        this._updateRendering()
-        this.gameState = 'restart'
-        this.errorMessage = null
-      } else {
-        this.gameState = 'question'
-        this._updateRendering()
-        this._setTimer('start')
-      }
+        .catch((e) => { error(e).bind(this) })
+      this.gameState = 'question'
+      this._updateRendering()
+      this._setTimer('start')
     } else if (this.gameState === 'question') {
       this._setTimer('stop')
       let answer = this.api.alternatives
@@ -84,13 +86,8 @@ class QuizGame extends window.HTMLElement {
         : this.form.inputAnswer.value.toUpperCase().trim()
       this.form.reset()
       this.response = await this.api.sendAnswer(answer)
-        .catch((error) => { this.errorMessage = error })
-      if (this.errorMessage) {
-        this.gameState = 'error'
-        this._updateRendering()
-        this.gameState = 'restart'
-        this.errorMessage = null
-      } else if (this.api.wrongAnswer) {
+        .catch((e) => { error(e).bind(this) })
+      if (this.api.wrongAnswer) {
         this.gameState = 'gameOver'
         this._updateRendering()
         this.gameState = 'restart'
@@ -159,7 +156,7 @@ class QuizGame extends window.HTMLElement {
    */
   _populateStorage () {
     let date = new Date().toISOString().substring(0, 10)
-    let key = `jqg-${new Date().valueOf()}`
+    let key = `jqg-${new Date().valueOf()}` // game identifier + unique id
     let value = {
       'key': key,
       'name': this.playerName,
@@ -202,9 +199,9 @@ class QuizGame extends window.HTMLElement {
    * @memberof QuizGame
    */
   _updateRendering () {
-    const $ = (selector, context = this.shadowRoot) => context.querySelector(selector)
+    const $ = (selector) => this.shadowRoot.querySelector(selector)
     const showElement = (selector) => $(selector).classList.remove('hidden')
-    let divs = this.shadowRoot.querySelectorAll('form div')
+    const divs = this.shadowRoot.querySelectorAll('form div')
     divs.forEach(div => div.classList.add('hidden'))
     $('#radioButtons').textContent = null
     $('#inputName').required = false
@@ -276,6 +273,9 @@ class QuizGame extends window.HTMLElement {
         tr.appendChild(tdDate)
         tr.appendChild(tdName)
         tr.appendChild(tdScore)
+        if (player.name === this.playerName && player.time === this.totalTime) {
+          tr.id = 'highlight'
+        }
         $('#highScoreTable').appendChild(tr)
       }
       showElement('#answerDiv')
