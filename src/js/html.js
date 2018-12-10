@@ -27,14 +27,16 @@ export default /* html */`
     <div id="gameFinished">
         <h4>Congratulations! You passed the quiz!</h4>
         <h4 id="totalTime"></h4>
-        <h3>High Score</h3>
         <table>
+        <caption>High Scores</caption>
+            <thead>
                 <tr>
                     <th>Place</th>
                     <th>Date</th>
                     <th>Name</th>
                     <th>Time</th>
                 </tr>
+            </thead>
             <tbody  id="highScoreTable">
             </tbody>
         </table>

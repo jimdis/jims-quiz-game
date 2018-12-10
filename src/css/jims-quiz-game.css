@@ -86,6 +86,11 @@ table {
     text-align: left;
 }
 
+caption {
+    color: #FF6B6B;
+    font-size: 1.25em;
+}
+
 th,
 td {
     padding: 10px;

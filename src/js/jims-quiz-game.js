@@ -36,8 +36,8 @@ class QuizGame extends window.HTMLElement {
     this.form = this.shadowRoot.querySelector('form')
     this.form.querySelector('button').textContent = 'Start Game!'
     // save reference so the event listener can be removed
-    this.boundButtonClicked = this.buttonClicked.bind(this)
-    this.form.addEventListener('submit', this.boundButtonClicked)
+    this._boundButtonClicked = this._buttonClicked.bind(this)
+    this.form.addEventListener('submit', this._boundButtonClicked)
     this._updateRendering()
   }
 
@@ -47,10 +47,9 @@ class QuizGame extends window.HTMLElement {
    * @memberof QuizGame
    */
   disconnectedCallback () {
-    this.setTimer('stop')
-    this.form.removeEventListener('submit', this.boundButtonClicked)
+    this._setTimer('stop')
+    this.form.removeEventListener('submit', this._boundButtonClicked)
     this.api = null // Garbage collection
-    this.errorMessage = null
   }
 
   /**
@@ -59,7 +58,7 @@ class QuizGame extends window.HTMLElement {
    * @param {any} event
    * @memberof QuizGame
    */
-  async buttonClicked (event) {
+  async _buttonClicked (event) {
     event.preventDefault()
     if (this.gameState === 'start') {
       this.playerName = this.form.playerName.value
@@ -72,13 +71,14 @@ class QuizGame extends window.HTMLElement {
         this.gameState = 'error'
         this._updateRendering()
         this.gameState = 'restart'
+        this.errorMessage = null
       } else {
         this.gameState = 'question'
         this._updateRendering()
-        this.setTimer('start')
+        this._setTimer('start')
       }
     } else if (this.gameState === 'question') {
-      this.setTimer('stop')
+      this._setTimer('stop')
       let answer = this.api.alternatives
         ? this.shadowRoot.querySelector('input[name="alt"]:checked').value
         : this.form.inputAnswer.value.toUpperCase().trim()
@@ -89,13 +89,14 @@ class QuizGame extends window.HTMLElement {
         this.gameState = 'error'
         this._updateRendering()
         this.gameState = 'restart'
+        this.errorMessage = null
       } else if (this.api.wrongAnswer) {
         this.gameState = 'gameOver'
         this._updateRendering()
         this.gameState = 'restart'
       } else if (this.api.gameFinished) {
         this.gameState = 'gameFinished'
-        this.populateStorage()
+        this._populateStorage()
         this._updateRendering()
         this.gameState = 'restart'
       } else {
@@ -115,15 +116,15 @@ class QuizGame extends window.HTMLElement {
    * @param {string} action 'start' or 'stop'
    * @memberof QuizGame
    */
-  setTimer (action) {
+  _setTimer (action) {
     if (action === 'start') {
       this.timer = 0
       var start = new Date().getTime()
       var elapsed = '20.0'
       this.shadowRoot.querySelector('#timer').classList.remove('fiveseconds')
-      timer.call(this)
+      timerCycle.call(this)
     }
-    function timer () {
+    function timerCycle () {
       this.timer += 100
       elapsed = Math.floor(200 - (this.timer / 100)) / 10
       if (Math.round(elapsed) === elapsed) { elapsed += '.0' }
@@ -133,17 +134,20 @@ class QuizGame extends window.HTMLElement {
         this.shadowRoot.querySelector('#timer').classList.add('fiveseconds')
       }
       if (elapsed === '0.0') {
-        this.setTimer('stop')
+        this._setTimer('stop')
         this.gameState = 'gameOver'
         this.timeOut = true
         this._updateRendering()
+        this.gameState = 'restart'
+        this.timeOut = false
       } else {
-        this.timerID = setTimeout(timer.bind(this), (100 - diff))
+        this.timerID = setTimeout(timerCycle.bind(this), (100 - diff))
       }
     }
     if (action === 'stop') {
       clearTimeout(this.timerID)
       this.totalTime += this.timer
+      console.log(this.totalTime)
     }
   }
 
@@ -153,7 +157,7 @@ class QuizGame extends window.HTMLElement {
    *
    * @memberof QuizGame
    */
-  populateStorage () {
+  _populateStorage () {
     let date = new Date().toISOString().substring(0, 10)
     let key = `jqg-${new Date().valueOf()}`
     let value = {
@@ -162,7 +166,7 @@ class QuizGame extends window.HTMLElement {
       'time': this.totalTime,
       'date': date
     }
-    let highScores = this.getHighScores()
+    let highScores = this._getHighScores()
 
     if (highScores.length < 5) {
       window.localStorage.setItem(key, JSON.stringify(value))
@@ -182,14 +186,14 @@ class QuizGame extends window.HTMLElement {
    * @memberof QuizGame
    * @returns {Array} Array with objects containing key, name, date, time
    */
-  getHighScores () {
+  _getHighScores () {
     let arr = []
-    let keys = Object.keys(window.localStorage).filter(key => key.substr(0, 4) === 'jqg-')
-    keys.forEach((key) => {
-      arr.push(JSON.parse(window.localStorage.getItem(key)))
-    })
-    arr.sort((a, b) => a.time - b.time)
-    return arr.slice(0, 5)
+    Object.keys(window.localStorage)
+      .filter(key => key.substr(0, 4) === 'jqg-')
+      .forEach((key) => arr.push(JSON.parse(window.localStorage.getItem(key))))
+
+    return arr.sort((a, b) => a.time - b.time)
+      .slice(0, 5)
   }
 
   /**
@@ -201,9 +205,7 @@ class QuizGame extends window.HTMLElement {
     const $ = (selector, context = this.shadowRoot) => context.querySelector(selector)
     const showElement = (selector) => $(selector).classList.remove('hidden')
     let divs = this.shadowRoot.querySelectorAll('form div')
-    for (let div of divs) {
-      div.classList.add('hidden')
-    }
+    divs.forEach(div => div.classList.add('hidden'))
     $('#radioButtons').textContent = null
     $('#inputName').required = false
     $('#inputAnswer').required = false
@@ -259,7 +261,7 @@ class QuizGame extends window.HTMLElement {
       $('#serverAnswer').textContent = this.response
       $('#totalTime').textContent = `Your total time was ${this.totalTime / 1000} seconds`
       $('#highScoreTable').textContent = null
-      let highScores = this.getHighScores()
+      let highScores = this._getHighScores()
       for (let player of highScores) {
         let tr = document.createElement('tr')
         let tdPlace = document.createElement('td')
