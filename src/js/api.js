@@ -8,6 +8,13 @@ export default class API {
     this.url = 'http://vhost3.lnu.se:20080/question/1'
   }
 
+  /**
+   * Contacts server to get new question
+   * @returns {string} - A question from the server.
+   * @throws {Error} Message depending on the error detected (network down or server response)
+   * @memberof API
+   */
+
   async getQuestion () {
     let response = await window.fetch(this.url)
       .catch(error => {
@@ -25,6 +32,13 @@ export default class API {
     }
   }
 
+  /**
+   * Sends answer to server.
+   *
+   * @param {string} answer - The answer to be sent to the server
+   * @returns {string} - The response message from the server
+   * @memberof API
+   */
   async sendAnswer (answer) {
     let response = await this.postData(this.url, { answer: answer })
       .catch((error) => {
@@ -39,6 +53,15 @@ export default class API {
     return response.message
   }
 
+  /**
+   * Posts data in JSON to the server.
+   *
+   * @param {string} url - The url to send the data
+   * @param {string} data - The data to be sent to the server
+   * @throws {Error} - Status response from server if fetch was not ok
+   * @returns {Object} - The response from the server
+   * @memberof API
+   */
   async postData (url, data) {
     let response = await window.fetch(url, {
       method: 'POST',

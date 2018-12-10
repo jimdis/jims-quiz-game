@@ -1,58 +1,9 @@
 import API from './api.js'
+import templateHTML from './html.js'
 
 const template = document.createElement('template')
 
-template.innerHTML = /* html */`
-<link rel="stylesheet" href="../css/jims-quiz-game.css">
-<form action="">
-    <div id="startDiv">
-        <h4>Please enter a nickname:</h4>
-        <input type="text" name="playerName" id="inputName" autocomplete="off" placeholder="Your cool nickname here...">
-    </div>
-    <div id="questionDiv">
-        <p id="timerLabel">Timer: <span id="timer"></span></p>
-        <h4>Question:</h4>
-        <h3 id="question"></h3>
-        <h4>Your answer:</h4>
-    </div>
-    <div id="inputText">
-      <input type="text" name="textAnswer" id="inputAnswer" autocomplete="off" placeholder="Type your answer here...">
-    </div>
-    <div id="inputRadio">
-        <div id="radioButtons">
-        </div>
-    </div>
-    <div id="answerDiv">
-        <h3 id="serverAnswer"></h3>
-    </div>
-    <div id="gameOver">
-        <h4>GAME OVER!</h4>
-    </div>
-    <div id="gameFinished">
-        <h4>Congratulations! You passed the quiz!</h4>
-        <h4 id="totalTime"></h4>
-        <h3>High Score</h3>
-        <table>
-                <tr>
-                    <th>Place</th>
-                    <th>Date</th>
-                    <th>Name</th>
-                    <th>Time</th>
-                </tr>
-            <tbody  id="highScoreTable">
-            </tbody>
-        </table>
-    </div>
-
-    <div id="timeOut">
-        <h4>Time is out! Game Over!</h4>
-    </div>
-    <div id="error">
-    <h4 id="errorMessage"></h4>
-    </div>
-    <button id="formButton" type="submit">BOILERPLATE</button>
-</form>
-`
+template.innerHTML = templateHTML
 
 /**
  * A Quiz game component
@@ -62,6 +13,10 @@ template.innerHTML = /* html */`
  */
 
 class QuizGame extends window.HTMLElement {
+  /**
+   * Creates an instance of QuizGame.
+   * @memberof QuizGame
+   */
   constructor () {
     super()
 
@@ -69,6 +24,11 @@ class QuizGame extends window.HTMLElement {
     this.shadowRoot.appendChild(template.content.cloneNode(true))
   }
 
+  /**
+   * Called when connected to the DOM
+   *
+   * @memberof QuizGame
+   */
   connectedCallback () {
     this.api = new API()
     this.totalTime = 0
@@ -81,6 +41,11 @@ class QuizGame extends window.HTMLElement {
     this._updateRendering()
   }
 
+  /**
+   * Called when removed from the DOM.
+   *
+   * @memberof QuizGame
+   */
   disconnectedCallback () {
     this.setTimer('stop')
     this.form.removeEventListener('submit', this.boundButtonClicked)
@@ -88,6 +53,12 @@ class QuizGame extends window.HTMLElement {
     this.errorMessage = null
   }
 
+  /**
+   * Game logic for what happens when user clicks button
+   *
+   * @param {any} event
+   * @memberof QuizGame
+   */
   async buttonClicked (event) {
     event.preventDefault()
     if (this.gameState === 'start') {
@@ -137,12 +108,13 @@ class QuizGame extends window.HTMLElement {
     }
   }
 
-  error (error) {
-    this.gameState = 'error'
-    this.errorMessage = error
-    this._updateRendering()
-  }
-  // Self-adjusting timer adapted from https://www.sitepoint.com/creating-accurate-timers-in-javascript/
+  /**
+   * Timer adapted from https://www.sitepoint.com/creating-accurate-timers-in-javascript/
+   * Counts down from 20s each question. Total Time for the quiz is stored in this.totalTime
+   *
+   * @param {string} action 'start' or 'stop'
+   * @memberof QuizGame
+   */
   setTimer (action) {
     if (action === 'start') {
       this.timer = 0
@@ -169,13 +141,18 @@ class QuizGame extends window.HTMLElement {
         this.timerID = setTimeout(timer.bind(this), (100 - diff))
       }
     }
-
     if (action === 'stop') {
       clearTimeout(this.timerID)
       this.totalTime += this.timer
     }
   }
 
+  /**
+   * Populates localStorage if player's time is better than the 5th best stored time.
+   * Removes the localStorage item that had the previous 5th best stored time.
+   *
+   * @memberof QuizGame
+   */
   populateStorage () {
     let date = new Date().toISOString().substring(0, 10)
     let key = `jqg-${new Date().valueOf()}`
@@ -199,6 +176,12 @@ class QuizGame extends window.HTMLElement {
     }
   }
 
+  /**
+   * Checks the localStorage for specific identifier key and returns the five best times.
+   *
+   * @memberof QuizGame
+   * @returns {Array} Array with objects containing key, name, date, time
+   */
   getHighScores () {
     let arr = []
     let keys = Object.keys(window.localStorage).filter(key => key.substr(0, 4) === 'jqg-')
@@ -209,6 +192,11 @@ class QuizGame extends window.HTMLElement {
     return arr.slice(0, 5)
   }
 
+  /**
+   * Updates rendering of browser window with relevant content depending on game state.
+   *
+   * @memberof QuizGame
+   */
   _updateRendering () {
     const $ = (selector, context = this.shadowRoot) => context.querySelector(selector)
     const showElement = (selector) => $(selector).classList.remove('hidden')
@@ -219,13 +207,11 @@ class QuizGame extends window.HTMLElement {
     $('#radioButtons').textContent = null
     $('#inputName').required = false
     $('#inputAnswer').required = false
-
     if (this.gameState === 'start') {
       $('#inputName').required = true
       showElement('#startDiv')
       $('#inputName').focus()
     }
-
     if (this.gameState === 'question') {
       $('#question').textContent = this.question
       showElement('#questionDiv')
@@ -252,14 +238,12 @@ class QuizGame extends window.HTMLElement {
         $('#inputAnswer').focus()
       }
     }
-
     if (this.gameState === 'answer') {
       $('#serverAnswer').textContent = this.response
       showElement('#answerDiv')
       $('button').textContent = 'Next Question!'
       $('button').focus()
     }
-
     if (this.gameState === 'gameOver') {
       if (this.timeOut) {
         showElement('#timeOut')
@@ -271,7 +255,6 @@ class QuizGame extends window.HTMLElement {
       $('button').textContent = 'Play Again!'
       $('button').focus()
     }
-
     if (this.gameState === 'gameFinished') {
       $('#serverAnswer').textContent = this.response
       $('#totalTime').textContent = `Your total time was ${this.totalTime / 1000} seconds`
@@ -298,7 +281,6 @@ class QuizGame extends window.HTMLElement {
       $('button').textContent = 'Play Again!'
       $('button').focus()
     }
-
     if (this.gameState === 'error') {
       showElement('#error')
       $('#errorMessage').textContent = this.errorMessage
